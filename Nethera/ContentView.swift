@@ -46,7 +46,7 @@ struct ContentView: View {
 
 struct VerwaltenView: View {
     var body: some View {
-        BlocklistView()
+        AddDomainView()
     }
 }
 
