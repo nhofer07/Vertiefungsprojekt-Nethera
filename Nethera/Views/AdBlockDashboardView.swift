@@ -28,8 +28,8 @@ struct AdBlockDashboardView: View {
                 titleCard
                 statsRow
                 blockedDomainsCard
+                SingleStatBoxCard
                 
-                Spacer()
             }
             .padding()
         }
@@ -95,11 +95,26 @@ struct AdBlockDashboardView: View {
         .cornerRadius(24)
     }
     
+    var SingleStatBoxCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            SingleStatBox(
+                icon: "shield.fill",
+                text: "Sie haben 97% aller Anfragen blockiert!"
+            )
+        }
+        .padding()
+        .background(.white.opacity(0.08))
+        .cornerRadius(24)
+    }
+    
+   
+    
 }
 
 
-// Wiederverwendbare Structs
-// Glasbox mit Info
+// Wiederverwendbare Structs:
+
+// Glasbox mit Info:
 
 struct StatBox: View {
     let icon: String
@@ -128,7 +143,7 @@ struct StatBox: View {
     }
 }
 
-// Reihe in der Liste der geblockten Domains
+// Reihe in der Liste der geblockten Domains:
 
 struct DomainRow: View {
     let name: String
@@ -153,3 +168,30 @@ struct DomainRow: View {
     }
 }
 
+struct SingleStatBox: View {
+    let icon: String
+    let text: String
+    
+    var body: some View {
+        HStack {
+            
+            Spacer()
+            
+            HStack(spacing: 12) {
+                Image(systemName: icon)
+                    .font(.system(size: 42))
+                
+                Text(text)
+                    .font(.system(size: 22, weight: .bold))
+            }
+            .foregroundColor(.white)
+            
+            Spacer()
+        }
+        .frame(maxWidth: 400)
+        .padding()
+        .background(.white.opacity(0.1))
+        .cornerRadius(22)
+        .frame(maxWidth: .infinity)
+    }
+}
