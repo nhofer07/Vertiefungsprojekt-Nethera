@@ -10,63 +10,80 @@ struct ParentalControlView: View {
 
     var body: some View {
         
-        
-
-        ZStack {
+        NavigationStack {
             
-            
-            // Dunkler Hintergrund
-            LinearGradient(
-                colors: [
-                    Color(red: 0.08, green: 0.18, blue: 0.22),
-                    Color(red: 0.02, green: 0.02, blue: 0.05)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            
-            VStack {
+            ZStack {
                 
-                HStack {
-                    Text("Kindersicherung")
-                        .font(.largeTitle)
-                        .bold()
-                        .foregroundColor(.white)
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
+                // Dunkler Hintergrund Gradient
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.18, blue: 0.22),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
                 
-                List(devices) { device in
+                VStack(spacing: 0) {
                     
-                    NavigationLink(destination: DeviceDetailView(device: device)) {
-                        
-                        HStack(spacing: 15) {
-                            Image(systemName: device.type)
-                                .foregroundColor(.white)
-                                .font(.system(size: 25))
-                            
-                            Text(device.name)
-                                .foregroundColor(.white)
-                            
-                            Spacer()
-                        }
-                        .padding()
-                        .background(Color(red: 0.1, green: 0.15, blue: 0.2)) // dunkle List-Item Card
-                        .cornerRadius(12)
+                    // Titel
+                    HStack {
+                        Text("Kindersicherung")
+                            .font(.largeTitle)
+                            .bold()
+                            .foregroundColor(.white)
+                        Spacer()
                     }
-                    .listRowBackground(Color.clear) // List-Hintergrund transparent für Gradient
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    // Liste der Geräte (im DevicesView-Style)
+                    List(devices) { device in
+                        
+                        NavigationLink(destination: DeviceDetailView(device: device)) {
+                            
+                            HStack {
+                                
+                                Image(systemName: device.type)
+                                    .font(.title2)
+                                    .frame(width: 35)
+                                    .foregroundColor(.white)
+                                
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(device.name)
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+                                    
+                                    Text("Online")
+                                        .font(.subheadline)
+                                        .foregroundColor(.white.opacity(0.7))
+                                }
+                                
+                                Spacer()
+                                
+                                // Pfeil rechts
+                                Image(systemName: "chevron.right")
+                                    .foregroundColor(.gray)
+                                    .font(.system(size: 16, weight: .semibold))
+                            }
+                            .padding(.vertical, 6)
+                        }
+                        .listRowBackground(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                                .opacity(0.9)
+                        )
+                    }
+                    .scrollContentBackground(.hidden) // transparentes List-Hintergrund
+                    .background(Color.clear)
                 }
-                .listStyle(PlainListStyle())
             }
-            
         }
     }
 }
 
 #Preview {
-    NavigationStack {
-        ParentalControlView()
-    }
+    ParentalControlView()
+    
 }
