@@ -39,6 +39,14 @@ struct HomeView: View {
                         StatCard(title: "3 Geräte", subtitle: "von Kindersicherung betroffen")
                     }
                     
+                    NavigationLink(destination: AdBlockDashboardView()) {
+                        StatCard(title: "2k Domains", subtitle: "für Werbung blockiert")
+                    }
+                    
+                    NavigationLink(destination: BlacklistDashboardView()) {
+                        StatCard(title: "7 Domains", subtitle: "auf Blacklist")
+                    }
+                    
                     Spacer()
                 }
                 .padding()
