@@ -58,13 +58,13 @@ struct AdBlockDashboardView: View {
             StatBox(
                 icon: "shield.fill",
                 number: "138",
-                subtitle: "Heute geblockte\nAnfragen"
+                subtitle: "Heute geblockt:"
             )
             
             StatBox(
                 icon: "shield.lefthalf.filled",
                 number: "12,4K",
-                subtitle: "Gesamt geblockte\nAnfragen"
+                subtitle: "Gesamt geblockt:"
             )
         }
     }

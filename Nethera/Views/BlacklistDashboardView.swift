@@ -111,7 +111,7 @@ struct BlacklistDashboardView: View {
             
             ManageBlocklists(
                 icon: "puzzlepiece",
-                text: "Blocklists verwalten"
+                text: "Blocklists verwalten "
             )
             
         }
@@ -179,25 +179,33 @@ struct BlacklistDashboardView: View {
         
         var body: some View {
             HStack {
+                Image(systemName: icon)
+                    .foregroundColor(.white.opacity(0.9))
+                    .frame(width: 70, height: 70)
+                
+                Text(text)
+                    .foregroundColor(.white)
+                    .font(.title2.bold())
                 
                 Spacer()
                 
-                HStack(spacing: 12) {
-                    Image(systemName: icon)
-                        .font(.system(size: 35))
-                    
-                    Text(text)
-                        .font(.system(size: 22, weight: .bold))
-                }
-                .foregroundColor(.white)
-                
-                Spacer()
+                Image(systemName: "chevron.right")
+                    .foregroundColor(.white.opacity(0.6))
             }
-            .frame(maxWidth: 400)
             .padding()
-            .background(.white.opacity(0.1))
-            .cornerRadius(22)
             .frame(maxWidth: .infinity)
+            .frame(height: 80)
+            .background(
+                RoundedRectangle(cornerRadius: 30)
+                    .fill(Color.white.opacity(0.08))
+                    .blur(radius: 2)
+                    .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
+            )
+            .contentShape(Rectangle())          
         }
     }
+}
+
+#Preview {
+    BlacklistDashboardView()
 }
