@@ -30,9 +30,12 @@ struct StatCard: View {
             Image(systemName: "chevron.right")
                 .opacity(0.6)
         }
-        .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(16)
-        .shadow(radius: 3)
+        .foregroundStyle(.white)
+                .padding()
+                .background(
+                    Color.white.opacity(0.15)
+                )
+                .cornerRadius(16)
+                .shadow(radius: 3)
     }
 }

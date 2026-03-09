@@ -52,7 +52,9 @@ struct VerwaltenView: View {
 
 struct GeraeteView: View {
     var body: some View {
-        Text("Geräte")
+        NavigationStack {
+            DevicesView()
+        }
     }
 }
 

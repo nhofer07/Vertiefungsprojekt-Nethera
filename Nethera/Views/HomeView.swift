@@ -10,27 +10,45 @@ import SwiftUI
 struct HomeView: View {
     
     var body: some View {
+        
         NavigationStack {
-            VStack(spacing: 20) {
+            
+            ZStack {
                 
-                NavigationLink(destination: DevicesView()) {
-                    StatCard(title: "11 Geräte aktiv", subtitle: "Geräte")
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.05, green: 0.2, blue: 0.25),
+                        Color.black
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+                
+                VStack(spacing: 20) {
+                    
+                    NavigationLink(destination: DevicesView()) {
+                        StatCard(title: "11 Geräte aktiv", subtitle: "Geräte")
+                    }
+                    
+                    NavigationLink(destination: SpeedView()) {
+                        StatCard(title: "200 mb/s", subtitle: "Durchschnittlicher Verbrauch")
+                    }
+                    
+                    NavigationLink(destination: ParentalControlView()) {
+                        StatCard(title: "3 Geräte", subtitle: "von Kindersicherung betroffen")
+                    }
+                    
+                    Spacer()
                 }
-                
-                NavigationLink(destination: SpeedView()) {
-                    StatCard(title: "200 mb/s", subtitle: "Durchschnittlicher Verbrauch")
-                }
-                
-                NavigationLink(destination: ParentalControlView()) {
-                    StatCard(title: "3 Geräte", subtitle: "von Kindersicherung betroffen")
-                }
-                
-               
-                
-                Spacer()
+                .padding()
             }
-            .padding()
             .navigationTitle("Start")
+            .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
+}
+
+#Preview {
+    HomeView()
 }
