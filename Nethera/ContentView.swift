@@ -11,10 +11,7 @@ struct ContentView: View {
     
     var body: some View {
         TabView {
-            
-            
-            
-            
+        
             GeraeteView()
                 .tabItem {
                     Label("Geräte", systemImage: "desktopcomputer")
@@ -30,7 +27,6 @@ struct ContentView: View {
                     Label("Einstellungen", systemImage: "gearshape")
                 }
             
-            
         }
     }
 }
@@ -38,8 +34,6 @@ struct ContentView: View {
 #Preview {
     ContentView()
 }
-
-
 
 struct GeraeteView: View {
     var body: some View {
