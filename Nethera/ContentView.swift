@@ -12,10 +12,8 @@ struct ContentView: View {
     var body: some View {
         TabView {
             
-            VerwaltenView()
-                .tabItem {
-                    Label("Verwalten", systemImage: "square.grid.2x2")
-                }
+            
+            
             
             GeraeteView()
                 .tabItem {
@@ -32,10 +30,7 @@ struct ContentView: View {
                     Label("Einstellungen", systemImage: "gearshape")
                 }
             
-            KontoView()
-                .tabItem {
-                    Label("Konto", systemImage: "person.crop.circle")
-                }
+            
         }
     }
 }
@@ -44,11 +39,7 @@ struct ContentView: View {
     ContentView()
 }
 
-struct VerwaltenView: View {
-    var body: some View {
-        BlocklistView()
-    }
-}
+
 
 struct GeraeteView: View {
     var body: some View {
@@ -64,8 +55,3 @@ struct EinstellungenView: View {
     }
 }
 
-struct KontoView: View {
-    var body: some View {
-        Text("Konto")
-    }
-}
