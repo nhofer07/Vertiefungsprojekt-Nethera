@@ -101,11 +101,7 @@ struct DeviceDetailView: View {
                 .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 16)
-                        .fill(.ultraThinMaterial)
-                        .background(                       
-                            RoundedRectangle(cornerRadius: 16)
-                                .fill(Color(red: 0.10, green: 0.25, blue: 0.35).opacity(0.35))
-                        )
+                        .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: 16)
