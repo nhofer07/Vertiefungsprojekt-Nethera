@@ -1,10 +1,3 @@
-//
-//  InfoCard.swift
-//  Nethera
-//
-//  Created by Nico Hofer on 08.03.26.
-//
-
 import SwiftUI
 
 struct InfoCard: View {
@@ -18,13 +11,23 @@ struct InfoCard: View {
             Text(title)
                 .font(.title2)
                 .bold()
+                .foregroundColor(.white) // Weißer Text
 
             Text(subtitle)
-                .foregroundColor(.gray)
+                .foregroundColor(.gray) // Subtitle bleibt grau
         }
         .frame(maxWidth: .infinity)
         .padding()
-        .background(Color(.systemGray6))
-        .cornerRadius(16)
+        .background(
+            RoundedRectangle(cornerRadius: 16)
+                .fill(Color(red: 0.1, green: 0.15, blue: 0.2)) // dunkle Hintergrundfarbe
+                .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2) // leichter Schatten
+        )
     }
+}
+
+#Preview {
+    InfoCard(title: "12h", subtitle: "Online")
+        .padding()
+        .background(Color.black)
 }

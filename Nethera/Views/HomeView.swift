@@ -25,34 +25,45 @@ struct HomeView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 20) {
+                VStack {
                     
-                    NavigationLink(destination: DevicesView()) {
-                        StatCard(title: "11 Geräte aktiv", subtitle: "Geräte")
+                    HStack {
+                        Text("Start")
+                            .font(.largeTitle)
+                            .bold()
+                            .foregroundColor(.white)
+                        Spacer()
                     }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
                     
-                    NavigationLink(destination: SpeedView()) {
-                        StatCard(title: "200 mb/s", subtitle: "Durchschnittlicher Verbrauch")
+                    VStack(spacing: 20) {
+                        
+                        NavigationLink(destination: DevicesView()) {
+                            StatCard(title: "11 Geräte aktiv", subtitle: "Geräte")
+                        }
+                        
+                        NavigationLink(destination: SpeedView()) {
+                            StatCard(title: "200 mb/s", subtitle: "Durchschnittlicher Verbrauch")
+                        }
+                        
+                        NavigationLink(destination: ParentalControlView()) {
+                            StatCard(title: "3 Geräte", subtitle: "von Kindersicherung betroffen")
+                        }
+                        
+                        NavigationLink(destination: AdBlockDashboardView()) {
+                            StatCard(title: "2k Domains", subtitle: "für Werbung blockiert")
+                        }
+                        
+                        NavigationLink(destination: BlacklistDashboardView()) {
+                            StatCard(title: "7 Domains", subtitle: "auf Blacklist")
+                        }
+                        
+                        Spacer()
                     }
-                    
-                    NavigationLink(destination: ParentalControlView()) {
-                        StatCard(title: "3 Geräte", subtitle: "von Kindersicherung betroffen")
-                    }
-                    
-                    NavigationLink(destination: AdBlockDashboardView()) {
-                        StatCard(title: "2k Domains", subtitle: "für Werbung blockiert")
-                    }
-                    
-                    NavigationLink(destination: BlacklistDashboardView()) {
-                        StatCard(title: "7 Domains", subtitle: "auf Blacklist")
-                    }
-                    
-                    Spacer()
+                    .padding()
                 }
-                .padding()
             }
-            .navigationTitle("Start")
-            .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }
 }
