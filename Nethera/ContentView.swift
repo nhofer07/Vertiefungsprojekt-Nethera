@@ -44,6 +44,6 @@ struct GeraeteView: View {
 
 struct EinstellungenView: View {
     var body: some View {
-        Text("Einstellungen")
+        SettingsChoiceView()
     }
 }

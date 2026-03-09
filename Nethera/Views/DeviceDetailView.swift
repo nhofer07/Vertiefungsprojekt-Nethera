@@ -3,6 +3,12 @@ import SwiftUI
 struct DeviceDetailView: View {
 
     let device: Device
+    
+    @State private var parentalControl = true
+    @State private var prioritized = false
+    @State private var timeLimitEnabled = false
+    @State private var startTime = Date()
+    @State private var endTime = Date()
 
     var body: some View {
         
@@ -22,17 +28,89 @@ struct DeviceDetailView: View {
                 
                 Image(systemName: device.type)
                     .font(.system(size: 50))
-                    .foregroundColor(.white) // Symbol sichtbar
+                    .foregroundColor(.white)
                     .padding()
                 
                 Text(device.name)
                     .font(.title)
                     .bold()
-                    .foregroundColor(.white) // Name sichtbar
+                    .foregroundColor(.white)
                 
-                // InfoCards unverändert
                 InfoCard(title: device.onlineTime, subtitle: "Online")
                 InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
+                
+                VStack(spacing: 15) {
+                    
+                    Toggle("Kindersicherung", isOn: $parentalControl)
+                        .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                        .foregroundColor(.white)
+                    
+                    Toggle("Gerät priorisieren", isOn: $prioritized)
+                        .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                        .foregroundColor(.white)
+                    
+                    Toggle("Zeitbeschränkung", isOn: $timeLimitEnabled)
+                        .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                        .foregroundColor(.white)
+                    
+                    if timeLimitEnabled {
+                        
+                        VStack(spacing: 12) {
+                            
+                            HStack {
+                                Text("Von")
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                DatePicker(
+                                    "",
+                                    selection: $startTime,
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .labelsHidden()
+                                .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                .colorScheme(.dark)
+                            }
+                            
+                            HStack {
+                                Text("Bis")
+                                    .foregroundColor(.white)
+                                
+                                Spacer()
+                                
+                                DatePicker(
+                                    "",
+                                    selection: $endTime,
+                                    displayedComponents: .hourAndMinute
+                                )
+                                .labelsHidden()
+                                .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                .colorScheme(.dark)
+                            }
+                            
+                            Text("Internet verboten von \(startTime.formatted(date: .omitted, time: .shortened)) bis \(endTime.formatted(date: .omitted, time: .shortened))")
+                                .font(.footnote)
+                                .foregroundColor(.white.opacity(0.7))
+                        }
+                        .colorScheme(.dark)
+                    }
+                    
+                }
+                .padding()
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(.ultraThinMaterial)
+                        .background(                       
+                            RoundedRectangle(cornerRadius: 16)
+                                .fill(Color(red: 0.10, green: 0.25, blue: 0.35).opacity(0.35))
+                        )
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 16)
+                        .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
+                )
                 
                 Spacer()
             }
@@ -43,7 +121,7 @@ struct DeviceDetailView: View {
                 Button("Gerät entfernen") {
                     print("Gerät entfernt")
                 }
-                .foregroundColor(.white) // Button sichtbar
+                .foregroundColor(.white)
             }
         }
     }
@@ -51,6 +129,13 @@ struct DeviceDetailView: View {
 
 #Preview {
     NavigationStack {
-        DeviceDetailView(device: Device(name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB"))
+        DeviceDetailView(
+            device: Device(
+                name: "iPhone von Nico",
+                type: "iphone.homebutton",
+                onlineTime: "12h",
+                dataUsage: "57 GB"
+            )
+        )
     }
 }
