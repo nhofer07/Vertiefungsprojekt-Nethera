@@ -74,12 +74,21 @@ struct BlacklistDashboardView: View {
             }
             
             NavigationLink(destination: AddDomainView()) {
-                Text("hinzufügen")
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 10)
-                    .background(.white.opacity(0.15))
-                    .cornerRadius(20)
+                Text("Hinzufügen")
+                    .font(.headline)
                     .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(Color.blue.opacity(0.3))
+                            .shadow(
+                                color: Color.blue.opacity(0.3),
+                                radius: 6,
+                                x: 0,
+                                y: 4
+                            )
+                    )
             }
             .buttonStyle(.plain)
         }

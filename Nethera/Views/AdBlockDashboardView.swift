@@ -83,12 +83,25 @@ struct AdBlockDashboardView: View {
                 DomainRow(name: "adservice.google.com", time: "29m")
             }
             
-            Button("weitere") {}
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.15))
-                .cornerRadius(16)
-                .foregroundColor(.white)
+            Button {
+                
+            } label: {
+                Text("Weitere")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 15)
+                    .background(
+                        RoundedRectangle(cornerRadius: 25)
+                            .fill(Color.blue.opacity(0.3))
+                            .shadow(
+                                color: Color.blue.opacity(0.3),
+                                radius: 6,
+                                x: 0,
+                                y: 4
+                            )
+                    )
+            }
         }
         .padding()
         .background(.white.opacity(0.08))
@@ -194,4 +207,8 @@ struct SingleStatBox: View {
         .cornerRadius(22)
         .frame(maxWidth: .infinity)
     }
+}
+
+#Preview {
+    AdBlockDashboardView()
 }

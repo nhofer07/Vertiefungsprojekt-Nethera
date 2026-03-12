@@ -70,13 +70,25 @@ struct BlocklistView: View {
                         .blur(radius: 2)
                         .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 6))
                     
-                    Button("Alle anzeigen") {}
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .padding(.vertical, 12)
-                        .padding(.horizontal, 40)
-                        .background(RoundedRectangle(cornerRadius: 20)
-                            .stroke(Color.white.opacity(0.6)))
+                    Button {
+                        
+                    } label: {
+                        Text("Alle anzeigen")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 15)
+                            .background(
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(Color.blue.opacity(0.3))
+                                    .shadow(
+                                        color: Color.blue.opacity(0.3),
+                                        radius: 6,
+                                        x: 0,
+                                        y: 4
+                                    )
+                            )
+                    }
                     
                     Spacer(minLength: 120)
                 }

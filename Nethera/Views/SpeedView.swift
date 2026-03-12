@@ -4,6 +4,8 @@ struct SpeedView: View {
     
     var body: some View {
         
+        @State var buttonPressed = false
+        
         ZStack {
             // Dunkler Hintergrund-Gradient
             LinearGradient(
@@ -36,33 +38,25 @@ struct SpeedView: View {
                     
                     SpeedCard(value: "72.2 mb/s", label: "ø Download")
                     
-                    Button(action: {
+
+                    Button {
+                        buttonPressed.toggle()
                         print("Speedtest gestartet")
-                    }) {
+                    } label: {
                         Text("Geschwindigkeit testen")
                             .font(.headline)
-                            .foregroundStyle(.white)
+                            .foregroundColor(.white)
                             .frame(maxWidth: .infinity)
-                            .padding()
+                            .padding(.vertical, 15)
                             .background(
-                                ZStack {
-                                    RoundedRectangle(cornerRadius: 16)
-                                        .fill(.ultraThinMaterial) 
-                                    
-                                    LinearGradient(
-                                        colors: [
-                                            Color.blue.opacity(0.35),
-                                            Color.cyan.opacity(0.25)
-                                        ],
-                                        startPoint: .topLeading,
-                                        endPoint: .bottomTrailing
+                                RoundedRectangle(cornerRadius: 25)
+                                    .fill(Color.blue.opacity(0.3))
+                                    .shadow(
+                                        color: Color.blue.opacity(buttonPressed ? 0.5 : 0.3),
+                                        radius: buttonPressed ? 12 : 6,
+                                        x: 0,
+                                        y: buttonPressed ? 6 : 4
                                     )
-                                    .clipShape(RoundedRectangle(cornerRadius: 16))
-                                }
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 16)
-                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
                             )
                     }
                     
