@@ -9,6 +9,10 @@ struct DeviceDetailView: View {
     @State private var timeLimitEnabled = false
     @State private var startTime = Date()
     @State private var endTime = Date()
+    
+    @State private var group = "Eltern"
+    
+    let groups = ["Eltern","Kinder","Wohnzimmer","Gast"]
 
     var body: some View {
         
@@ -38,6 +42,28 @@ struct DeviceDetailView: View {
                 
                 InfoCard(title: device.onlineTime, subtitle: "Online")
                 InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
+                
+                // GRUPPE ÄNDERN
+                VStack(alignment: .leading, spacing: 10) {
+                    
+                    Text("Gerätegruppe")
+                        .foregroundColor(.white)
+                        .font(.headline)
+                    
+                    Picker("Gruppe", selection: $group) {
+                        ForEach(groups, id:\.self) { g in
+                            Text(g)
+                        }
+                    }
+                    .pickerStyle(.menu)
+                }
+                .frame(maxWidth: .infinity)
+                .padding()
+                .background(
+                    RoundedRectangle(cornerRadius: 16)
+                        .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                )
+            
                 
                 VStack(spacing: 15) {
                     
@@ -98,7 +124,6 @@ struct DeviceDetailView: View {
                     
                 }
                 .padding()
-                .padding()
                 .background(
                     RoundedRectangle(cornerRadius: 16)
                         .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
@@ -130,7 +155,8 @@ struct DeviceDetailView: View {
                 name: "iPhone von Nico",
                 type: "iphone.homebutton",
                 onlineTime: "12h",
-                dataUsage: "57 GB"
+                dataUsage: "57 GB",
+                group: "Eltern"
             )
         )
     }

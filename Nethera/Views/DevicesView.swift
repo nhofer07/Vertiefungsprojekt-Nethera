@@ -9,11 +9,16 @@ import SwiftUI
 
 struct DevicesView: View {
     
-    let devices = [
-        Device(name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB"),
-        Device(name: "MacBook Nico", type: "laptopcomputer", onlineTime: "5h", dataUsage: "12 GB"),
-        Device(name: "Smart TV", type: "tv", onlineTime: "3h", dataUsage: "8 GB")
+    @State private var devices = [
+        Device(name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Eltern"),
+        Device(name: "MacBook Nico", type: "laptopcomputer", onlineTime: "5h", dataUsage: "12 GB", group: "Eltern"),
+        Device(name: "Annas iPhone", type: "iphone", onlineTime: "6h", dataUsage: "4 GB", group: "Kinder"),
+        Device(name: "Smart TV", type: "tv", onlineTime: "3h", dataUsage: "8 GB", group: "Wohnzimmer")
     ]
+    
+    var groupedDevices: [String: [Device]] {
+        Dictionary(grouping: devices, by: { $0.group })
+    }
     
     var body: some View {
         
@@ -21,7 +26,6 @@ struct DevicesView: View {
             
             ZStack {
                 
-                // Dunkler Hintergrund Gradient
                 LinearGradient(
                     colors: [
                         Color(red: 0.08, green: 0.18, blue: 0.22),
@@ -32,60 +36,54 @@ struct DevicesView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
+                List {
                     
-                    // Großer, weißer Titel
-                    HStack {
-                        Text("Geräte")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    
-                    // Liste der Geräte
-                    List(devices) { device in
+                    ForEach(groupedDevices.keys.sorted(), id: \.self) { group in
                         
-                        NavigationLink(destination: DeviceDetailView(device: device)) {
+                        Section(header:
+                            Text(group)
+                                .foregroundColor(.white)
+                                .font(.headline)
+                        ) {
                             
-                            HStack {
+                            ForEach(groupedDevices[group]!) { device in
                                 
-                                Image(systemName: device.type)
-                                    .font(.title2)
-                                    .frame(width: 35)
-                                    .foregroundColor(.white)
-                                
-                                VStack(alignment: .leading, spacing: 2) {
-                                    Text(device.name)
-                                        .font(.headline)
-                                        .foregroundColor(.white)
+                                NavigationLink(
+                                    destination: DeviceDetailView(device: device)
+                                ) {
                                     
-                                    Text("Online")
-                                        .font(.subheadline)
-                                        .foregroundColor(.white.opacity(0.7))
+                                    HStack {
+                                        
+                                        Image(systemName: device.type)
+                                            .font(.title2)
+                                            .frame(width: 35)
+                                            .foregroundColor(.white)
+                                        
+                                        VStack(alignment: .leading) {
+                                            Text(device.name)
+                                                .foregroundColor(.white)
+                                            
+                                            Text("Online")
+                                                .font(.subheadline)
+                                                .foregroundColor(.white.opacity(0.7))
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(.gray)
+                                    }
                                 }
-                                
-                                Spacer()
-                                
-                                // Pfeil rechts
-                                Image(systemName: "chevron.right")
-                                    .foregroundColor(.gray)
-                                    .font(.system(size: 16, weight: .semibold))
+                                .listRowBackground(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                                )
                             }
-                            .padding(.vertical, 6)
-                            
                         }
-                        .listRowBackground(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                                .opacity(0.9)
-                        )
                     }
-                    .scrollContentBackground(.hidden) // transparentes List-Hintergrund
-                    .background(Color.clear)
                 }
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
             }
         }
     }

@@ -9,8 +9,9 @@ import Foundation
 
 struct Device: Identifiable {
     let id = UUID()
-    let name: String
-    let type: String
-    let onlineTime: String
-    let dataUsage: String
+    var name: String
+    var type: String
+    var onlineTime: String
+    var dataUsage: String
+    var group: String
 }
