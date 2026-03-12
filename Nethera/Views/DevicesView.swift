@@ -1,10 +1,3 @@
-//
-//  DevicesView.swift
-//  Nethera
-//
-//  Created by Nico Hofer on 08.03.26.
-//
-
 import SwiftUI
 
 struct DevicesView: View {
@@ -16,6 +9,14 @@ struct DevicesView: View {
         Device(name: "Smart TV", type: "tv", onlineTime: "3h", dataUsage: "8 GB", group: "Wohnzimmer")
     ]
     
+    @State private var groups = ["Eltern","Kinder","Wohnzimmer"]
+    
+    @State private var showAddGroup = false
+    @State private var newGroupName = ""
+    
+    @State private var renameGroup = ""
+    @State private var showRename = false
+    
     var groupedDevices: [String: [Device]] {
         Dictionary(grouping: devices, by: { $0.group })
     }
@@ -23,9 +24,7 @@ struct DevicesView: View {
     var body: some View {
         
         NavigationStack {
-            
             ZStack {
-                
                 LinearGradient(
                     colors: [
                         Color(red: 0.08, green: 0.18, blue: 0.22),
@@ -36,24 +35,49 @@ struct DevicesView: View {
                 )
                 .ignoresSafeArea()
                 
-                List {
-                    
-                    ForEach(groupedDevices.keys.sorted(), id: \.self) { group in
+                VStack(spacing: 0) {
+                    // Weißer Titel links
+                    HStack {
+                        Text("Geräte")
+                            .foregroundColor(.white)
+                            .font(.largeTitle.bold())
+                        Spacer()
                         
-                        Section(header:
-                            Text(group)
+                        // Plus Button rechts oben
+                        Button {
+                            showAddGroup = true
+                        } label: {
+                            Image(systemName: "plus")
                                 .foregroundColor(.white)
-                                .font(.headline)
-                        ) {
+                                .font(.title2)
+                        }
+                    }
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    
+                    List {
+                        ForEach(groups, id:\.self) { group in
                             
-                            ForEach(groupedDevices[group]!) { device in
-                                
-                                NavigationLink(
-                                    destination: DeviceDetailView(device: device)
-                                ) {
-                                    
+                            // Weißer Header als eigene View
+                            VStack(alignment: .leading) {
+                                HStack {
+                                    Text(group)
+                                        .foregroundColor(.white)
+                                        .font(.headline)
+                                    Spacer()
+                                }
+                                .padding(.vertical, 6)
+                                .contentShape(Rectangle())
+                                .onTapGesture {
+                                    renameGroup = group
+                                    showRename = true
+                                }
+                            }
+                            .listRowBackground(Color.clear)
+                            
+                            ForEach(groupedDevices[group] ?? []) { device in
+                                NavigationLink(destination: DeviceDetailView(device: device)) {
                                     HStack {
-                                        
                                         Image(systemName: device.type)
                                             .font(.title2)
                                             .frame(width: 35)
@@ -62,7 +86,6 @@ struct DevicesView: View {
                                         VStack(alignment: .leading) {
                                             Text(device.name)
                                                 .foregroundColor(.white)
-                                            
                                             Text("Online")
                                                 .font(.subheadline)
                                                 .foregroundColor(.white.opacity(0.7))
@@ -81,10 +104,33 @@ struct DevicesView: View {
                             }
                         }
                     }
+                    .scrollContentBackground(.hidden)
+                    .background(Color.clear)
                 }
-                .scrollContentBackground(.hidden)
-                .background(Color.clear)
             }
+        }
+        // Gruppe hinzufügen
+        .alert("Neue Gruppe", isPresented: $showAddGroup) {
+            TextField("Gruppenname", text: $newGroupName)
+            Button("Erstellen") {
+                if !newGroupName.isEmpty && !groups.contains(newGroupName) {
+                    groups.append(newGroupName)
+                    newGroupName = ""
+                }
+            }
+            Button("Abbrechen", role: .cancel) {}
+        }
+        // Gruppe umbenennen
+        .alert("Gruppe umbenennen", isPresented: $showRename) {
+            TextField("Neuer Name", text: $renameGroup)
+            Button("Speichern") {
+                if !renameGroup.isEmpty && !groups.contains(renameGroup) {
+                    if let oldIndex = groups.firstIndex(of: renameGroup) {
+                        groups[oldIndex] = renameGroup
+                    }
+                }
+            }
+            Button("Abbrechen", role: .cancel) {}
         }
     }
 }
