@@ -14,135 +14,232 @@ struct DeviceDetailView: View {
     
     let groups = ["Eltern","Kinder","Wohnzimmer","Gast"]
 
+    struct DevicePreset: Codable, Identifiable, Equatable {
+        let id: UUID
+        var name: String
+        var group: String
+        var parentalControl: Bool
+        var prioritized: Bool
+        var timeLimitEnabled: Bool
+        var startTime: Date
+        var endTime: Date
+    }
+
+    private let presetsKey = "SavedDevicePresets"
+
+    @State private var showPresetSheet = false
+    @State private var presetName: String = ""
+    @State private var saveErrorMessage: String?
+    @State private var presets: [DevicePreset] = []
+
+    private func loadPresets() -> [DevicePreset] {
+        guard let data = UserDefaults.standard.data(forKey: presetsKey) else { return [] }
+        do {
+            return try JSONDecoder().decode([DevicePreset].self, from: data)
+        } catch {
+            return []
+        }
+    }
+
+    private func savePresets(_ presets: [DevicePreset]) {
+        do {
+            let data = try JSONEncoder().encode(presets)
+            UserDefaults.standard.set(data, forKey: presetsKey)
+        } catch {
+            saveErrorMessage = "Konnte Presets nicht speichern."
+        }
+    }
+
+    private func saveCurrentAsPreset(named name: String) {
+        var existingPresets = loadPresets()
+        let newPreset = DevicePreset(
+            id: UUID(),
+            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
+            group: group,
+            parentalControl: parentalControl,
+            prioritized: prioritized,
+            timeLimitEnabled: timeLimitEnabled,
+            startTime: startTime,
+            endTime: endTime
+        )
+        existingPresets.append(newPreset)
+        savePresets(existingPresets)
+        presets = existingPresets
+    }
+
+    private func applyPreset(_ preset: DevicePreset) {
+        group = preset.group
+        parentalControl = preset.parentalControl
+        prioritized = preset.prioritized
+        timeLimitEnabled = preset.timeLimitEnabled
+        startTime = preset.startTime
+        endTime = preset.endTime
+    }
+
     var body: some View {
         
         ZStack {
-            
             LinearGradient(
-                colors: [
-                    Color(red: 0.08, green: 0.18, blue: 0.22),
-                    Color(red: 0.02, green: 0.02, blue: 0.05)
-                ],
+                colors: [Color(red: 0.08, green: 0.18, blue: 0.22),
+                         Color(red: 0.02, green: 0.02, blue: 0.05)],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
             
-            VStack(spacing: 20) {
-                
-                Image(systemName: device.type)
-                    .font(.system(size: 50))
-                    .foregroundColor(.white)
-                    .padding()
-                
-                Text(device.name)
-                    .font(.title)
-                    .bold()
-                    .foregroundColor(.white)
-                
-                InfoCard(title: device.onlineTime, subtitle: "Online")
-                InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
-                
-                // GRUPPE ÄNDERN
-                VStack(alignment: .leading, spacing: 10) {
+            ScrollView {
+                VStack(spacing: 20) {
                     
-                    Text("Gerätegruppe")
+                    Image(systemName: device.type)
+                        .font(.system(size: 50))
                         .foregroundColor(.white)
-                        .font(.headline)
+                        .padding()
                     
-                    Picker("Gruppe", selection: $group) {
-                        ForEach(groups, id:\.self) { g in
-                            Text(g)
-                        }
-                    }
-                    .pickerStyle(.menu)
-                }
-                .frame(maxWidth: .infinity)
-                .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                )
-            
-                
-                VStack(spacing: 15) {
-                    
-                    Toggle("Kindersicherung", isOn: $parentalControl)
-                        .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                    Text(device.name)
+                        .font(.title)
+                        .bold()
                         .foregroundColor(.white)
                     
-                    Toggle("Gerät priorisieren", isOn: $prioritized)
-                        .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                        .foregroundColor(.white)
+                    InfoCard(title: device.onlineTime, subtitle: "Online")
+                    InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
                     
-                    Toggle("Zeitbeschränkung", isOn: $timeLimitEnabled)
-                        .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                        .foregroundColor(.white)
-                    
-                    if timeLimitEnabled {
+                    // Gruppe ändern
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Gerätegruppe")
+                            .foregroundColor(.white)
+                            .font(.headline)
                         
-                        VStack(spacing: 12) {
-                            
-                            HStack {
-                                Text("Von")
-                                    .foregroundColor(.white)
-                                
-                                Spacer()
-                                
-                                DatePicker(
-                                    "",
-                                    selection: $startTime,
-                                    displayedComponents: .hourAndMinute
-                                )
-                                .labelsHidden()
-                                .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
-                                .colorScheme(.dark)
+                        Picker("Gruppe", selection: $group) {
+                            ForEach(groups, id:\.self) { g in
+                                Text(g)
                             }
-                            
-                            HStack {
-                                Text("Bis")
-                                    .foregroundColor(.white)
-                                
-                                Spacer()
-                                
-                                DatePicker(
-                                    "",
-                                    selection: $endTime,
-                                    displayedComponents: .hourAndMinute
-                                )
-                                .labelsHidden()
-                                .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
-                                .colorScheme(.dark)
-                            }
-                            
-                            Text("Internet verboten von \(startTime.formatted(date: .omitted, time: .shortened)) bis \(endTime.formatted(date: .omitted, time: .shortened))")
-                                .font(.footnote)
-                                .foregroundColor(.white.opacity(0.7))
                         }
-                        .colorScheme(.dark)
+                        .pickerStyle(.menu)
                     }
+                    .frame(maxWidth: .infinity)
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(red: 0.1, green: 0.15, blue: 0.2)))
                     
+                    VStack(spacing: 15) {
+                        Toggle("Kindersicherung", isOn: $parentalControl)
+                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                            .foregroundColor(.white)
+                        
+                        Toggle("Gerät priorisieren", isOn: $prioritized)
+                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                            .foregroundColor(.white)
+                        
+                        Toggle("Zeitbeschränkung", isOn: $timeLimitEnabled)
+                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                            .foregroundColor(.white)
+                        
+                        if timeLimitEnabled {
+                            VStack(spacing: 12) {
+                                HStack {
+                                    Text("Von").foregroundColor(.white)
+                                    Spacer()
+                                    DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
+                                        .labelsHidden()
+                                        .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                        .colorScheme(.dark)
+                                }
+                                HStack {
+                                    Text("Bis").foregroundColor(.white)
+                                    Spacer()
+                                    DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
+                                        .labelsHidden()
+                                        .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                        .colorScheme(.dark)
+                                }
+                                Text("Internet verboten von \(startTime.formatted(date: .omitted, time: .shortened)) bis \(endTime.formatted(date: .omitted, time: .shortened))")
+                                    .font(.footnote)
+                                    .foregroundColor(.white.opacity(0.7))
+                            }
+                            .colorScheme(.dark)
+                        }
+                    }
+                    .padding()
+                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(red: 0.1, green: 0.15, blue: 0.2)))
+                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1))
+                    
+                    Spacer(minLength: 20)
                 }
                 .padding()
-                .background(
-                    RoundedRectangle(cornerRadius: 16)
-                        .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: 16)
-                        .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
-                )
-                
-                Spacer()
             }
-            .padding()
         }
         .toolbar {
+            ToolbarItem(placement: .navigationBarLeading) {
+                Button {
+                    presets = loadPresets()
+                    showPresetSheet = true
+                } label: {
+                    Image(systemName: "square.and.arrow.down")
+                        .font(.title2)
+                        .foregroundColor(.white)
+                        .frame(width: 40, height: 40)
+                        .clipShape(Circle())
+                }
+            }
+            
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button("Gerät entfernen") {
                     print("Gerät entfernt")
                 }
                 .foregroundColor(.white)
+            }
+        }
+        // Preset Sheet
+        .sheet(isPresented: $showPresetSheet) {
+            NavigationStack {
+                VStack(spacing: 16) {
+                    Text("Presets")
+                        .font(.title2).bold()
+                    
+                    // Neues Preset erstellen
+                    VStack(spacing: 8) {
+                        TextField("Neues Preset Name", text: $presetName)
+                            .textFieldStyle(.roundedBorder)
+                            .padding(.horizontal)
+                        
+                        Button("Speichern") {
+                            let name = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
+                            guard !name.isEmpty else { return }
+                            saveCurrentAsPreset(named: name)
+                            presetName = ""
+                        }
+                        .buttonStyle(.borderedProminent)
+                    }
+                    .padding(.bottom)
+                    
+                    Divider()
+                    
+                    // Vorhandene Presets auswählen
+                    List {
+                        ForEach(presets) { preset in
+                            Button {
+                                applyPreset(preset)
+                                showPresetSheet = false
+                            } label: {
+                                VStack(alignment: .leading) {
+                                    Text(preset.name).bold()
+                                    Text("Gruppe: \(preset.group), Kindersicherung: \(preset.parentalControl ? "An" : "Aus")")
+                                        .font(.footnote)
+                                        .foregroundColor(.secondary)
+                                }
+                                .padding(.vertical, 4)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .navigationTitle("Preset auswählen")
+                .toolbar {
+                    ToolbarItem(placement: .navigationBarTrailing) {
+                        Button("Fertig") {
+                            showPresetSheet = false
+                        }
+                    }
+                }
             }
         }
     }

@@ -8,6 +8,17 @@
 import SwiftUI
 
 struct SettingsView: View {
+    
+    @State private var wifiName = "Nethera"
+    @State private var password = "27N!G?4"
+    @State private var guestPassword = "0N-Gast0"
+    
+    @State private var notifications = true
+    @State private var darkMode = true
+    
+    @State private var frequency = "5 GHz"
+    @State private var firewall = true
+    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -22,39 +33,77 @@ struct SettingsView: View {
                     VStack(spacing: 20) {
                         
                         SectionCard(title: "Basis Einstellungen") {
-                            SettingRow(icon: "wifi", label: "WLAN-Name", value: "Nethera")
-                            SettingRow(icon: "lock", label: "Passwort", value: "27N!G?4")
-                            SettingRow(icon: "person.2", label: "Gastnetz Passwort", value: "0N-Gast0")
-                            SettingRow(icon: "bell", label: "Meldungen", value: "aktiv")
-                            SettingRow(icon: "globe", label: "Sprache", value: "standard")
-                            SettingRow(icon: "moon.fill", label: "Darkmode", value: "aktiv")
-                            SettingRow(icon: "network", label: "Modell", value: "Nethera-7x9")
-                            SettingRow(icon: "gearshape", label: "Version", value: "Nv.1.0.1.2")
+                            
+                            EditableTextRow(icon: "wifi", label: "WLAN-Name", text: $wifiName)
+                            EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
+                            EditableSecureRow(icon: "person.2", label: "Gastnetz Passwort", text: $guestPassword)
+                            ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
+                            ToggleRow(icon: "moon.fill", label: "Darkmode", isOn: $darkMode)
+                            
+                            SettingRow(icon: "network", label: "Modell", value: "Nethera-7x9", isEditable: false)
+                            SettingRow(icon: "gearshape", label: "Version", value: "Nv.1.0.1.2", isEditable: false)
                         }
                         
+                        // MARK: Erweiterte Einstellungen
                         SectionCard(title: "Erweiterte Einstellungen") {
-                            SettingRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", value: "5 Ghz")
-                            SettingRow(icon: "shield", label: "Firewall", value: "aktiv")
-                            SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar")
-                            SettingRow(icon: "trash", label: "Reset", value: "Nie")
-                            SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch")
-                            SettingRow(icon: "server.rack", label: "Proxy", value: "Nie")
-                            SettingRow(icon: "ipaddress", label: "IP-Adresse", value: "192.168.0.224")
-                            SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: "255.255.255.0")
+                            
+                            PickerRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", selection: $frequency, options: ["2.4 GHz", "5 GHz", "Auto"])
+                            ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
+                            
+                            SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: false)
+                            SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: false)
+                            SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch", isEditable: false)
+                            SettingRow(icon: "server.rack", label: "Proxy", value: "Nie", isEditable: false)
+                            SettingRow(icon: "ipaddress", label: "IP-Adresse", value: "192.168.0.224", isEditable: false)
+                            SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: "255.255.255.0", isEditable: false)
                         }
                         
-                        Spacer(minLength: 20)
+                        // Platzhalter für besseres Scrollen
+                        Spacer(minLength: 100)
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Einstellungen")
             .toolbarColorScheme(.dark, for: .navigationBar)
+            
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: {
+                        saveSettings()
+                    }) {
+                        Text("Speichern")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .padding(.vertical, 8)
+                            .padding(.horizontal, 16)
+                            .background(
+                                RoundedRectangle(cornerRadius: 20)
+                                    .fill(Color.blue.opacity(0.3))
+                                    .shadow(
+                                        color: Color.blue.opacity(0.3),
+                                        radius: 6,
+                                        x: 0,
+                                        y: 4
+                                    )
+                            )
+                    }
+                }
+            }
         }
+    }
+    
+    func saveSettings() {
+        print("Einstellungen gespeichert:")
+        print("WLAN-Name: \(wifiName)")
+        print("Passwort: \(password)")
+        print("Gastnetz: \(guestPassword)")
+        print("Meldungen: \(notifications)")
+        print("Darkmode: \(darkMode)")
+        print("Frequenz: \(frequency)")
+        print("Firewall: \(firewall)")
     }
 }
 
-// Wiederverwendbare SectionCard
 struct SectionCard<Content: View>: View {
     let title: String
     let content: Content
@@ -81,28 +130,145 @@ struct SectionCard<Content: View>: View {
     }
 }
 
-// Einzelne Zeile
 struct SettingRow: View {
     let icon: String
     let label: String
     let value: String
+    var isEditable: Bool = true
     
     var body: some View {
         HStack {
             Image(systemName: icon)
                 .foregroundColor(.white.opacity(0.8))
                 .frame(width: 30)
+            
             Text(label)
                 .foregroundColor(.white)
                 .font(.system(size: 18, weight: .bold))
+            
             Spacer()
+            
             Text(value)
-                .foregroundColor(.white.opacity(0.9))
+                .foregroundColor(isEditable ? .white.opacity(0.9) : .white.opacity(0.6))
                 .font(.system(size: 18))
         }
+        .padding(10)
+        .background(isEditable ? Color.white.opacity(0.15) : Color.clear)
+        .cornerRadius(12)
+    }
+}
+
+struct EditableTextRow: View {
+    let icon: String
+    let label: String
+    @Binding var text: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.white.opacity(0.8))
+                .frame(width: 30)
+            
+            Text(label)
+                .foregroundColor(.white)
+                .font(.system(size: 18, weight: .bold))
+            
+            Spacer()
+            
+            TextField("", text: $text)
+                .multilineTextAlignment(.trailing)
+                .foregroundColor(.white)
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.15))
+        .cornerRadius(12)
+    }
+}
+
+struct EditableSecureRow: View {
+    let icon: String
+    let label: String
+    @Binding var text: String
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.white.opacity(0.8))
+                .frame(width: 30)
+            
+            Text(label)
+                .foregroundColor(.white)
+                .font(.system(size: 18, weight: .bold))
+            
+            Spacer()
+            
+            SecureField("", text: $text)
+                .multilineTextAlignment(.trailing)
+                .foregroundColor(.white)
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.15))
+        .cornerRadius(12)
+    }
+}
+
+struct ToggleRow: View {
+    let icon: String
+    let label: String
+    @Binding var isOn: Bool
+    
+    var body: some View {
+        Toggle(isOn: $isOn) {
+            HStack {
+                Image(systemName: icon)
+                    .foregroundColor(.white.opacity(0.8))
+                    .frame(width: 30)
+                
+                Text(label)
+                    .foregroundColor(.white)
+                    .font(.system(size: 18, weight: .bold))
+            }
+        }
+        .toggleStyle(SwitchToggleStyle(tint: .teal))
+        .padding(10)
+        .background(Color.white.opacity(0.15))
+        .cornerRadius(12)
+    }
+}
+
+struct PickerRow: View {
+    let icon: String
+    let label: String
+    @Binding var selection: String
+    let options: [String]
+    
+    var body: some View {
+        HStack {
+            Image(systemName: icon)
+                .foregroundColor(.white.opacity(0.8))
+                .frame(width: 30)
+            
+            Text(label)
+                .foregroundColor(.white)
+                .font(.system(size: 18, weight: .bold))
+            
+            Spacer()
+            
+            Picker("", selection: $selection) {
+                ForEach(options, id: \.self) {
+                    Text($0)
+                }
+            }
+            .pickerStyle(.menu)
+            .tint(.white)
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.15))
+        .cornerRadius(12)
     }
 }
 
 #Preview {
     SettingsView()
 }
+
