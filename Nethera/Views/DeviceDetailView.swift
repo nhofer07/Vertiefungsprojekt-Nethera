@@ -76,6 +76,15 @@ struct DeviceDetailView: View {
         endTime = preset.endTime
     }
 
+    private func deletePreset(_ preset: DevicePreset) {
+        var existingPresets = loadPresets()
+        existingPresets.removeAll { $0.id == preset.id }
+        savePresets(existingPresets)
+        withAnimation {
+            presets = existingPresets
+        }
+    }
+
     var body: some View {
         
         ZStack {
@@ -103,7 +112,6 @@ struct DeviceDetailView: View {
                     InfoCard(title: device.onlineTime, subtitle: "Online")
                     InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
                     
-                    // Gruppe ändern
                     VStack(alignment: .leading, spacing: 10) {
                         Text("Gerätegruppe")
                             .foregroundColor(.white)
@@ -118,9 +126,13 @@ struct DeviceDetailView: View {
                     }
                     .frame(maxWidth: .infinity)
                     .padding()
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(red: 0.1, green: 0.15, blue: 0.2)))
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                    )
                     
                     VStack(spacing: 15) {
+                        
                         Toggle("Kindersicherung", isOn: $parentalControl)
                             .toggleStyle(SwitchToggleStyle(tint: .cyan))
                             .foregroundColor(.white)
@@ -135,6 +147,7 @@ struct DeviceDetailView: View {
                         
                         if timeLimitEnabled {
                             VStack(spacing: 12) {
+                                
                                 HStack {
                                     Text("Von").foregroundColor(.white)
                                     Spacer()
@@ -143,6 +156,7 @@ struct DeviceDetailView: View {
                                         .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
                                         .colorScheme(.dark)
                                 }
+                                
                                 HStack {
                                     Text("Bis").foregroundColor(.white)
                                     Spacer()
@@ -151,6 +165,7 @@ struct DeviceDetailView: View {
                                         .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
                                         .colorScheme(.dark)
                                 }
+                                
                                 Text("Internet verboten von \(startTime.formatted(date: .omitted, time: .shortened)) bis \(endTime.formatted(date: .omitted, time: .shortened))")
                                     .font(.footnote)
                                     .foregroundColor(.white.opacity(0.7))
@@ -159,8 +174,14 @@ struct DeviceDetailView: View {
                         }
                     }
                     .padding()
-                    .background(RoundedRectangle(cornerRadius: 16).fill(Color(red: 0.1, green: 0.15, blue: 0.2)))
-                    .overlay(RoundedRectangle(cornerRadius: 16).stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1))
+                    .background(
+                        RoundedRectangle(cornerRadius: 16)
+                            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 16)
+                            .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
+                    )
                     
                     Spacer(minLength: 20)
                 }
@@ -168,6 +189,7 @@ struct DeviceDetailView: View {
             }
         }
         .toolbar {
+            
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     presets = loadPresets()
@@ -177,7 +199,6 @@ struct DeviceDetailView: View {
                         .font(.title2)
                         .foregroundColor(.white)
                         .frame(width: 40, height: 40)
-                        .clipShape(Circle())
                 }
             }
             
@@ -188,56 +209,151 @@ struct DeviceDetailView: View {
                 .foregroundColor(.white)
             }
         }
-        // Preset Sheet
+        
         .sheet(isPresented: $showPresetSheet) {
             NavigationStack {
-                VStack(spacing: 16) {
-                    Text("Presets")
-                        .font(.title2).bold()
+                
+                ZStack {
                     
-                    // Neues Preset erstellen
-                    VStack(spacing: 8) {
-                        TextField("Neues Preset Name", text: $presetName)
-                            .textFieldStyle(.roundedBorder)
-                            .padding(.horizontal)
-                        
-                        Button("Speichern") {
-                            let name = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
-                            guard !name.isEmpty else { return }
-                            saveCurrentAsPreset(named: name)
-                            presetName = ""
-                        }
-                        .buttonStyle(.borderedProminent)
-                    }
-                    .padding(.bottom)
+                    LinearGradient(
+                        colors: [Color(red: 0.08, green: 0.18, blue: 0.22),
+                                 Color(red: 0.02, green: 0.02, blue: 0.05)],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea()
                     
-                    Divider()
-                    
-                    // Vorhandene Presets auswählen
-                    List {
-                        ForEach(presets) { preset in
-                            Button {
-                                applyPreset(preset)
-                                showPresetSheet = false
-                            } label: {
-                                VStack(alignment: .leading) {
-                                    Text(preset.name).bold()
-                                    Text("Gruppe: \(preset.group), Kindersicherung: \(preset.parentalControl ? "An" : "Aus")")
-                                        .font(.footnote)
-                                        .foregroundColor(.secondary)
+                    ScrollView {
+                        VStack(spacing: 20) {
+                            
+                            Text("Presets")
+                                .font(.largeTitle)
+                                .bold()
+                                .foregroundColor(.white)
+                            
+                            VStack(spacing: 12) {
+                                
+                                Text("Neues Preset")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                ZStack(alignment: .leading) {
+                                    
+                                    if presetName.isEmpty {
+                                        Text("Preset Name")
+                                            .foregroundColor(.white.opacity(0.5))
+                                            .padding(.horizontal, 14)
+                                    }
+
+                                    TextField("", text: $presetName)
+                                        .padding()
+                                        .foregroundColor(.white)
                                 }
-                                .padding(.vertical, 4)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 12)
+                                        .fill(Color(red: 0.12, green: 0.17, blue: 0.22))
+                                )
+                                
+                                Button {
+                                    let name = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
+                                    guard !name.isEmpty else { return }
+                                    saveCurrentAsPreset(named: name)
+                                    presetName = ""
+                                } label: {
+                                    Text("Preset speichern")
+                                        .fontWeight(.semibold)
+                                        .frame(maxWidth: .infinity)
+                                        .padding()
+                                        .background(
+                                            RoundedRectangle(cornerRadius: 14)
+                                                .fill(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                        )
+                                        .foregroundColor(.black)
+                                }
+                            }
+                            .padding()
+                            .background(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                            )
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 18)
+                                    .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
+                            )
+                            
+                            VStack(alignment: .leading, spacing: 14) {
+                                
+                                Text("Gespeicherte Presets")
+                                    .font(.headline)
+                                    .foregroundColor(.white)
+                                
+                                ForEach(presets) { preset in
+                                    
+                                    HStack {
+                                        
+                                        Button {
+                                            applyPreset(preset)
+                                            showPresetSheet = false
+                                        } label: {
+                                            
+                                            VStack(alignment: .leading, spacing: 6) {
+                                                
+                                                Text(preset.name)
+                                                    .font(.headline)
+                                                    .foregroundColor(.white)
+                                                
+                                                Text("Gruppe: \(preset.group)")
+                                                    .font(.subheadline)
+                                                    .foregroundColor(.white.opacity(0.7))
+                                                
+                                                HStack {
+                                                    
+                                                    Label(
+                                                        preset.parentalControl ? "Kindersicherung An" : "Kindersicherung Aus",
+                                                        systemImage: preset.parentalControl ? "lock.fill" : "lock.open"
+                                                    )
+                                                    
+                                                    Spacer()
+                                                    
+                                                    if preset.prioritized {
+                                                        Label("Priorisiert", systemImage: "bolt.fill")
+                                                    }
+                                                }
+                                                .font(.footnote)
+                                                .foregroundColor(.white.opacity(0.7))
+                                            }
+                                        }
+                                        
+                                        Spacer()
+                                        
+                                        Button {
+                                            deletePreset(preset)
+                                        } label: {
+                                            Image(systemName: "trash")
+                                                .foregroundColor(.red)
+                                        }
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+                                    )
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 16)
+                                            .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
+                                    )
+                                }
                             }
                         }
+                        .padding()
                     }
                 }
-                .padding()
-                .navigationTitle("Preset auswählen")
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Fertig") {
                             showPresetSheet = false
                         }
+                        .foregroundColor(.white)
                     }
                 }
             }
