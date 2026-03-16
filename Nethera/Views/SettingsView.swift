@@ -36,7 +36,7 @@ struct SettingsView: View {
                             
                             EditableTextRow(icon: "wifi", label: "WLAN-Name", text: $wifiName)
                             EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
-                            EditableSecureRow(icon: "person.2", label: "Gastnetz Passwort", text: $guestPassword)
+                            EditableSecureRow(icon: "person.2", label: "Gastnetz (PW)", text: $guestPassword)
                             ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
                             ToggleRow(icon: "moon.fill", label: "Darkmode", isOn: $darkMode)
                             
@@ -50,10 +50,10 @@ struct SettingsView: View {
                             PickerRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", selection: $frequency, options: ["2.4 GHz", "5 GHz", "Auto"])
                             ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
                             
-                            SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: false)
-                            SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: false)
-                            SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch", isEditable: false)
-                            SettingRow(icon: "server.rack", label: "Proxy", value: "Nie", isEditable: false)
+                            SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: true)
+                            SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: true)
+                            SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch", isEditable: true)
+                            SettingRow(icon: "server.rack", label: "Proxy", value: "Nie", isEditable: true)
                             SettingRow(icon: "ipaddress", label: "IP-Adresse", value: "192.168.0.224", isEditable: false)
                             SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: "255.255.255.0", isEditable: false)
                         }
