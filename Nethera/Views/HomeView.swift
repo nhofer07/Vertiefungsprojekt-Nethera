@@ -26,16 +26,7 @@ struct HomeView: View {
                 .ignoresSafeArea()
                 
                 VStack {
-                    
-                    HStack {
-                        Text("Start")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
+                    PageHeaderView(title: "Start")
                     
                     VStack(spacing: 20) {
                         

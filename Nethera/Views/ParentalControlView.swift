@@ -13,8 +13,6 @@ struct ParentalControlView: View {
         NavigationStack {
             
             ZStack {
-                
-                // Dunkler Hintergrund Gradient
                 LinearGradient(
                     colors: [
                         Color(red: 0.08, green: 0.18, blue: 0.22),
@@ -26,19 +24,9 @@ struct ParentalControlView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
+                    PageHeaderView(title: "Kindersicherung", showBackButton: true)
                     
-                    // Titel
-                    HStack {
-                        Text("Kindersicherung")
-                            .font(.largeTitle)
-                            .bold()
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
-                    
-                    // Liste der Geräte (im DevicesView-Style)
+                    // Liste der Geräte
                     List(devices) { device in
                         
                         NavigationLink(destination: DeviceDetailView(device: device)) {
@@ -62,7 +50,7 @@ struct ParentalControlView: View {
                                 
                                 Spacer()
                                 
-                                // Pfeil rechts
+                                
                                 Image(systemName: "chevron.right")
                                     .foregroundColor(.gray)
                                     .font(.system(size: 16, weight: .semibold))
@@ -75,11 +63,14 @@ struct ParentalControlView: View {
                                 .opacity(0.9)
                         )
                     }
-                    .scrollContentBackground(.hidden) // transparentes List-Hintergrund
+                    .scrollContentBackground(.hidden)
+                    // transparentes List-Hintergrund
                     .background(Color.clear)
                 }
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

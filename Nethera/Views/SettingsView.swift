@@ -31,64 +31,50 @@ struct SettingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
+                        PageHeaderView(title: "Router-Einstellungen", showBackButton: true)
                         
-                        SectionCard(title: "Basis Einstellungen") {
+                        VStack(spacing: 20) {
+                            SectionCard(title: "Basis Einstellungen") {
+                                
+                                EditableTextRow(icon: "wifi", label: "WLAN-Name", text: $wifiName)
+                                EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
+                                EditableSecureRow(icon: "person.2", label: "Gastnetz (PW)", text: $guestPassword)
+                                ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
+                                ToggleRow(icon: "moon.fill", label: "Darkmode", isOn: $darkMode)
+                                
+                                SettingRow(icon: "network", label: "Modell", value: "Nethera-7x9", isEditable: false)
+                                SettingRow(icon: "gearshape", label: "Version", value: "Nv.1.0.1.2", isEditable: false)
+                            }
                             
-                            EditableTextRow(icon: "wifi", label: "WLAN-Name", text: $wifiName)
-                            EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
-                            EditableSecureRow(icon: "person.2", label: "Gastnetz (PW)", text: $guestPassword)
-                            ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
-                            ToggleRow(icon: "moon.fill", label: "Darkmode", isOn: $darkMode)
+                            // Erweiterte Einstellungen
+                            SectionCard(title: "Erweiterte Einstellungen") {
+                                
+                                PickerRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", selection: $frequency, options: ["2.4 GHz", "5 GHz", "Auto"])
+                                ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
+                                
+                                SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: true)
+                                SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: true)
+                                SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch", isEditable: true)
+                                SettingRow(icon: "server.rack", label: "Proxy", value: "Nie", isEditable: true)
+                                SettingRow(icon: "ipaddress", label: "IP-Adresse", value: "192.168.0.224", isEditable: false)
+                                SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: "255.255.255.0", isEditable: false)
+                            }
                             
-                            SettingRow(icon: "network", label: "Modell", value: "Nethera-7x9", isEditable: false)
-                            SettingRow(icon: "gearshape", label: "Version", value: "Nv.1.0.1.2", isEditable: false)
+                            Spacer(minLength: 100)
                         }
-                        
-                        // MARK: Erweiterte Einstellungen
-                        SectionCard(title: "Erweiterte Einstellungen") {
-                            
-                            PickerRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", selection: $frequency, options: ["2.4 GHz", "5 GHz", "Auto"])
-                            ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
-                            
-                            SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: true)
-                            SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: true)
-                            SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch", isEditable: true)
-                            SettingRow(icon: "server.rack", label: "Proxy", value: "Nie", isEditable: true)
-                            SettingRow(icon: "ipaddress", label: "IP-Adresse", value: "192.168.0.224", isEditable: false)
-                            SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: "255.255.255.0", isEditable: false)
-                        }
-                        
-                        // Platzhalter für besseres Scrollen
-                        Spacer(minLength: 100)
+                        .padding()
                     }
-                    .padding()
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
             
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        saveSettings()
-                    }) {
-                        Text("Speichern")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .padding(.vertical, 8)
-                            .padding(.horizontal, 16)
-                            .background(
-                                RoundedRectangle(cornerRadius: 20)
-                                    .fill(Color.blue.opacity(0.3))
-                                    .shadow(
-                                        color: Color.blue.opacity(0.3),
-                                        radius: 6,
-                                        x: 0,
-                                        y: 4
-                                    )
-                            )
-                    }
                 }
             }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
         }
     }
     

@@ -7,7 +7,6 @@ struct SpeedView: View {
         @State var buttonPressed = false
         
         ZStack {
-            // Dunkler Hintergrund-Gradient
             LinearGradient(
                 colors: [
                     Color(red: 0.08, green: 0.18, blue: 0.22),
@@ -19,16 +18,7 @@ struct SpeedView: View {
             .ignoresSafeArea()
             
             VStack {
-                
-                HStack {
-                    Text("Geschwindigkeit")
-                        .font(.largeTitle)
-                        .bold()
-                        .foregroundColor(.white)
-                    Spacer()
-                }
-                .padding(.horizontal)
-                .padding(.top, 8)
+                PageHeaderView(title: "Geschwindigkeit", showBackButton: true)
                 
                 VStack(spacing: 25) {
                     
@@ -65,6 +55,8 @@ struct SpeedView: View {
                 .padding()
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         
     }
 }

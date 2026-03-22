@@ -36,14 +36,7 @@ struct DevicesView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    // Weißer Titel links
-                    HStack {
-                        Text("Geräte")
-                            .foregroundColor(.white)
-                            .font(.largeTitle.bold())
-                        Spacer()
-                        
-                        // Plus Button rechts oben
+                    PageHeaderView(title: "Geräte", showBackButton: true) {
                         Button {
                             showAddGroup = true
                         } label: {
@@ -52,8 +45,6 @@ struct DevicesView: View {
                                 .font(.title2)
                         }
                     }
-                    .padding(.horizontal)
-                    .padding(.top, 8)
                     
                     List {
                         ForEach(groups, id:\.self) { group in
@@ -109,6 +100,8 @@ struct DevicesView: View {
                 }
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
         // Gruppe hinzufügen
         .alert("Neue Gruppe", isPresented: $showAddGroup) {
             TextField("Gruppenname", text: $newGroupName)

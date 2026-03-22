@@ -11,6 +11,11 @@ import Foundation
 import SwiftUI
 
 struct BlacklistDashboardView: View {
+    @State private var showBlacklistDetails = false
+    @State private var gamblingEnabled = true
+    @State private var adultEnabled = true
+    @State private var socialEnabled = true
+
     var body: some View {
         NavigationStack {
             ZStack {
@@ -23,40 +28,65 @@ struct BlacklistDashboardView: View {
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
-                
-                VStack(spacing: 20) {
-                    
-                    blacklistCard
-                    manageBlocklistButton
-                    domainListCard
-                    statsRow
-                    
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 20) {
+                        PageHeaderView(title: "Blacklist", showBackButton: true)
+
+                        VStack(spacing: 20) {
+                            blacklistExpandableCard
+                            domainListCard
+                            statsRow
+                        }
+                        .padding(.horizontal)
+                    }
+                    .padding(.vertical)
                 }
-                .padding()
             }
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
         }
     }
     
-    var blacklistCard: some View {
-        NavigationLink(destination: BlocklistView()) {
-            RoundedRectangle(cornerRadius: 26)
-                .fill(.white.opacity(0.12))
-                .frame(height: 100)
-                .overlay(
-                    HStack(spacing: 20) {
-                        
-                        Image(systemName: "list.bullet")
-                            .font(.system(size: 32))
-                            .foregroundColor(.white)
-                        
-                        Text("Deine Blacklists")
-                            .font(.title2)
-                            .bold()
-                            .foregroundColor(.white)
-                    }
+
+
+    var blacklistExpandableCard: some View {
+        DisclosureGroup(isExpanded: $showBlacklistDetails) {
+            VStack(spacing: 12) {
+                ExpandableBlacklistRow(
+                    title: "Glücksspiele",
+                    domains: "bet365.com, bwin.com, tipico.de, win2day.at, royalvegas.com...",
+                    moreCount: 43,
+                    isOn: $gamblingEnabled
                 )
+
+                ExpandableBlacklistRow(
+                    title: "18+ Inhalte",
+                    domains: "pornhub.com, youporn.com, brazzers.com, susi.live, onlyfans.com...",
+                    moreCount: 213,
+                    isOn: $adultEnabled
+                )
+
+                ExpandableBlacklistRow(
+                    title: "Social-Media",
+                    domains: "facebook.com, instagram.com, tiktok.com, snapchat.com, x.com...",
+                    moreCount: 13,
+                    isOn: $socialEnabled
+                )
+            }
+            .padding(.top, 8)
+        } label: {
+            HStack {
+                Text("Blacklists anzeigen")
+                    .font(.headline)
+                    .foregroundColor(.white)
+                Spacer()
+            }
         }
-        .buttonStyle(.plain)
+        .tint(.white)
+        .padding(20)
+        .background(.white.opacity(0.08))
+        .cornerRadius(28)
     }
     
     var domainListCard: some View {
@@ -114,20 +144,6 @@ struct BlacklistDashboardView: View {
         }
     }
     
-    
-    var manageBlocklistButton: some View {
-        NavigationLink(destination: BlocklistView()) {
-            
-            ManageBlocklists(
-                icon: "puzzlepiece",
-                text: "Blocklists verwalten "
-            )
-            
-        }
-        .buttonStyle(.plain)
-    }
-    
-    
     // Wiederverwendbare Structs:
     
     // ListenItem:
@@ -181,36 +197,49 @@ struct BlacklistDashboardView: View {
             .cornerRadius(26)
         }
     }
-    
-    struct ManageBlocklists: View {
-        let icon: String
-        let text: String
-        
+
+    struct ExpandableBlacklistRow: View {
+        let title: String
+        let domains: String
+        let moreCount: Int
+        @Binding var isOn: Bool
+
         var body: some View {
-            HStack {
-                Image(systemName: icon)
-                    .foregroundColor(.white.opacity(0.9))
-                    .frame(width: 70, height: 70)
-                
-                Text(text)
-                    .foregroundColor(.white)
-                    .font(.title2.bold())
-                
-                Spacer()
-                
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.white.opacity(0.6))
+            VStack(alignment: .leading, spacing: 10) {
+                HStack {
+                    Text(title)
+                        .font(.headline)
+                        .foregroundColor(.white)
+
+                    Spacer()
+
+                    Toggle("", isOn: $isOn)
+                        .tint(.blue)
+                        .labelsHidden()
+                }
+
+                HStack(alignment: .top, spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.white.opacity(0.7))
+
+                    VStack(alignment: .leading, spacing: 4) {
+                        Text("Blockierte Domains:")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+
+                        Text("\(domains) + \(moreCount) weitere")
+                            .font(.caption)
+                            .foregroundColor(.white.opacity(0.8))
+                            .lineLimit(2)
+                            .truncationMode(.tail)
+                    }
+                }
             }
-            .padding()
-            .frame(maxWidth: .infinity)
-            .frame(height: 80)
-            .background(
-                RoundedRectangle(cornerRadius: 30)
-                    .fill(Color.white.opacity(0.08))
-                    .blur(radius: 2)
-                    .shadow(color: Color.black.opacity(0.3), radius: 8, x: 0, y: 4)
-            )
-            .contentShape(Rectangle())          
+            .padding(16)
+            .background(RoundedRectangle(cornerRadius: 22)
+                .fill(Color.white.opacity(0.08))
+                .blur(radius: 1)
+                .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 4))
         }
     }
 }

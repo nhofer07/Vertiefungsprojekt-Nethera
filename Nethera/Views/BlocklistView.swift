@@ -26,76 +26,65 @@ struct BlocklistView: View {
             
             ScrollView(showsIndicators: false) {
                 VStack(spacing: 24) {
-                        HStack {
-                        Image(systemName: "puzzlepiece")
-                            .font(.title2)
-                            .foregroundColor(.white.opacity(0.8))
-                        
-                        Text("Blocklisten verwalten")
-                            .font(.system(size: 26, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        
-                        Spacer()
-                    }
-                    .padding()
-                    .background(RoundedRectangle(cornerRadius: 25)
-                        .fill(Color.white.opacity(0.08))
-                        .blur(radius: 2)
-                        .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5))
+                    PageHeaderView(title: "Blocklisten", showBackButton: true)
                     
-                    VStack(spacing: 20) {
-                        Text("Empfohlene Blocklisten")
-                            .font(.title3.bold())
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity, alignment: .leading)
+                    VStack(spacing: 24) {
+                        VStack(spacing: 20) {
+                            Text("Empfohlene Blocklisten")
+                                .font(.title3.bold())
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            
+                            BlocklistRowFloating(title: "Glücksspiele",
+                                                 domains: "bet365.com, bwin.com, tipico.de, win2day.at, royalvegas.com...",
+                                                 moreCount: 43,
+                                                 isOn: $gamblingEnabled)
+                            
+                            BlocklistRowFloating(title: "18+ Inhalte",
+                                                 domains: "pornhub.com, youporn.com, brazzers.com, susi.live, onlyfans.com...",
+                                                 moreCount: 213,
+                                                 isOn: $adultEnabled)
+                            
+                            BlocklistRowFloating(title: "Social-Media",
+                                                 domains: "facebook.com, instagram.com, tiktok.com, snapchat.com, x.com...",
+                                                 moreCount: 13,
+                                                 isOn: $socialEnabled)
+                        }
+                        .padding(25)
+                        .background(RoundedRectangle(cornerRadius: 30)
+                            .fill(Color.white.opacity(0.08))
+                            .blur(radius: 2)
+                            .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 6))
                         
-                        BlocklistRowFloating(title: "Glücksspiele",
-                                             domains: "bet365.com, bwin.com, tipico.de, win2day.at, royalvegas.com...",
-                                             moreCount: 43,
-                                             isOn: $gamblingEnabled)
+                        Button {
+                            
+                        } label: {
+                            Text("Alle anzeigen")
+                                .font(.headline)
+                                .foregroundColor(.white)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 25)
+                                        .fill(Color.blue.opacity(0.3))
+                                        .shadow(
+                                            color: Color.blue.opacity(0.3),
+                                            radius: 6,
+                                            x: 0,
+                                            y: 4
+                                        )
+                                )
+                        }
                         
-                        BlocklistRowFloating(title: "18+ Inhalte",
-                                             domains: "pornhub.com, youporn.com, brazzers.com, susi.live, onlyfans.com...",
-                                             moreCount: 213,
-                                             isOn: $adultEnabled)
-                        
-                        BlocklistRowFloating(title: "Social-Media",
-                                             domains: "facebook.com, instagram.com, tiktok.com, snapchat.com, x.com...",
-                                             moreCount: 13,
-                                             isOn: $socialEnabled)
+                        Spacer(minLength: 120)
                     }
-                    .padding(25)
-                    .background(RoundedRectangle(cornerRadius: 30)
-                        .fill(Color.white.opacity(0.08))
-                        .blur(radius: 2)
-                        .shadow(color: Color.black.opacity(0.35), radius: 12, x: 0, y: 6))
-                    
-                    Button {
-                        
-                    } label: {
-                        Text("Alle anzeigen")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 15)
-                            .background(
-                                RoundedRectangle(cornerRadius: 25)
-                                    .fill(Color.blue.opacity(0.3))
-                                    .shadow(
-                                        color: Color.blue.opacity(0.3),
-                                        radius: 6,
-                                        x: 0,
-                                        y: 4
-                                    )
-                            )
-                    }
-                    
-                    Spacer(minLength: 120)
+                    .padding(.horizontal, 20)
                 }
-                .padding(.horizontal, 20)
                 .padding(.top, 15)
             }
         }
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
 }
 

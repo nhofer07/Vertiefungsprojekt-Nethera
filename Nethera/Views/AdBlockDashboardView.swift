@@ -24,33 +24,20 @@ struct AdBlockDashboardView: View {
             .ignoresSafeArea()
             
             VStack(spacing: 20) {
+                PageHeaderView(title: "Geblockte Werbung", showBackButton: true)
                 
-                titleCard
-                statsRow
-                blockedDomainsCard
-                SingleStatBoxCard
+                VStack(spacing: 20) {
+                    statsRow
+                    blockedDomainsCard
+                    SingleStatBoxCard
+                }
+                .padding(.horizontal)
                 
             }
-            .padding()
+            .padding(.vertical)
         }
-    }
-    
-    var titleCard: some View {
-        RoundedRectangle(cornerRadius: 22)
-            .fill(.white.opacity(0.12))
-            .frame(height: 80)
-            .overlay(
-                HStack {
-                    Image(systemName: "hand.raised.fill")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                    
-                    Text("Geblockte Werbung")
-                        .font(.title3)
-                        .bold()
-                        .foregroundColor(.white)
-                }
-            )
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
     }
     
     var statsRow: some View {

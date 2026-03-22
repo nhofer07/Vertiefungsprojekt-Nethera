@@ -27,34 +27,39 @@ struct AccountView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
+                        PageHeaderView(title: "Konto", showBackButton: true)
                         
-                        // MARK: Profil
-                        SectionCard(title: "Profil") {
-                            EditableTextRow(icon: "person.crop.circle", label: "Name", text: $name)
-                            EditableTextRow(icon: "envelope", label: "E-Mail", text: $email)
-                            EditableTextRow(icon: "phone", label: "Telefon", text: $phone)
-                            EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
-                            SettingRow(icon: "calendar", label: "Geburtsdatum", value: "01.01.1990", isEditable: false)
+                        VStack(spacing: 20) {
+                            // MARK: Profil
+                            SectionCard(title: "Profil") {
+                                EditableTextRow(icon: "person.crop.circle", label: "Name", text: $name)
+                                EditableTextRow(icon: "envelope", label: "E-Mail", text: $email)
+                                EditableTextRow(icon: "phone", label: "Telefon", text: $phone)
+                                EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
+                                SettingRow(icon: "calendar", label: "Geburtsdatum", value: "01.01.1990", isEditable: false)
+                            }
+                            
+                            // Sicherheit
+                            SectionCard(title: "Sicherheit") {
+                                SettingRow(icon: "shield.lefthalf.fill", label: "2FA", value: "aktiviert", isEditable: false)
+                                SettingRow(icon: "key", label: "API-Zugriff", value: "deaktiviert", isEditable: false)
+                            }
+                            
+                            // MARK: Kontoverwaltung
+                            SectionCard(title: "Kontoverwaltung") {
+                                SettingRow(icon: "power", label: "Konto deaktivieren", value: "", isEditable: false)
+                                SettingRow(icon: "trash", label: "Konto löschen", value: "", isEditable: false)
+                            }
+                            
+                            Spacer(minLength: 20)
                         }
-                        
-                        // MARK: Sicherheit
-                        SectionCard(title: "Sicherheit") {
-                            SettingRow(icon: "shield.lefthalf.fill", label: "2FA", value: "aktiviert", isEditable: false)
-                            SettingRow(icon: "key", label: "API-Zugriff", value: "deaktiviert", isEditable: false)
-                        }
-                        
-                        // MARK: Kontoverwaltung
-                        SectionCard(title: "Kontoverwaltung") {
-                            SettingRow(icon: "power", label: "Konto deaktivieren", value: "", isEditable: false)
-                            SettingRow(icon: "trash", label: "Konto löschen", value: "", isEditable: false)
-                        }
-                        
-                        Spacer(minLength: 20)
+                        .padding()
                     }
-                    .padding()
                 }
             }
-            .navigationTitle("Konto")
+            .navigationBarBackButtonHidden(true)
+            .toolbar(.hidden, for: .navigationBar)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
     }

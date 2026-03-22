@@ -20,23 +20,7 @@ struct SettingsChoiceView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 0) {
-                    
-                    HStack {
-                        Text("Einstellungen")
-                            .font(.system(size: 28, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-                        Spacer()
-                    }
-                    .padding(.horizontal, 24)
-                    .padding(.vertical, 18)
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill(Color.white.opacity(0.08))
-                            .blur(radius: 2)
-                            .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
-                    )
-                    .padding(.top, 20)
-                    .padding(.horizontal, 20)
+                    PageHeaderView(title: "Einstellungen")
                     
                     Spacer(minLength: 20)
                     
