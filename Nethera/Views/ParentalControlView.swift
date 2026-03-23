@@ -25,8 +25,13 @@ struct ParentalControlView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 10) {
+                VStack(spacing: 12) {
                     PageHeaderView(title: "Kindersicherung", showBackButton: true)
+
+                    Text("\(devices.count) Geräte geschützt")
+                    .font(.footnote.weight(.medium))
+                    .foregroundColor(.white.opacity(0.78))
+                    .padding(.horizontal)
                     
                     // Liste der Geräte
                     List(devices.indices, id: \.self) { index in
@@ -46,7 +51,7 @@ struct ParentalControlView: View {
                                         .font(.headline)
                                         .foregroundColor(.white)
                                     
-                                    Text("Online")
+                                    Text("\(device.onlineTime) online")
                                         .font(.subheadline)
                                         .foregroundColor(.white.opacity(0.7))
                                 }
@@ -62,10 +67,11 @@ struct ParentalControlView: View {
                         }
                         .listRowBackground(
                             RoundedRectangle(cornerRadius: 12)
-                                .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                                .opacity(0.9)
+                                .fill(Color.white.opacity(0.09))
                         )
+                        .listRowSeparator(.hidden)
                     }
+                    .listStyle(.plain)
                     .scrollContentBackground(.hidden)
                     // transparentes List-Hintergrund
                     .background(Color.clear)

@@ -14,6 +14,19 @@ struct AccountView: View {
     @State private var email = "max@nethera.com"
     @State private var phone = "+43 123 456789"
     @State private var password = "••••••••"
+
+    @State private var savedName = "Max Mustermann"
+    @State private var savedEmail = "max@nethera.com"
+    @State private var savedPhone = "+43 123 456789"
+    @State private var savedPassword = "••••••••"
+    @State private var showSavedMessage = false
+
+    private var hasUnsavedChanges: Bool {
+        name != savedName ||
+        email != savedEmail ||
+        phone != savedPhone ||
+        password != savedPassword
+    }
     
     var body: some View {
         NavigationStack {
@@ -27,7 +40,26 @@ struct AccountView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
-                        PageHeaderView(title: "Konto", showBackButton: true)
+                        PageHeaderView(title: "Konto", showBackButton: true) {
+                            Button {
+                                saveAccountSettings()
+                            } label: {
+                                Image(systemName: hasUnsavedChanges ? "checkmark.circle.fill" : "checkmark.circle")
+                                    .font(.title2.weight(.bold))
+                                    .foregroundColor(hasUnsavedChanges ? Color(red: 0.35, green: 0.75, blue: 0.9) : .white.opacity(0.45))
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.white.opacity(hasUnsavedChanges ? 0.14 : 0.08))
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!hasUnsavedChanges)
+                        }
+
+                        if showSavedMessage {
+                            Text("Kontodaten gespeichert")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
+                        }
                         
                         VStack(spacing: 20) {
                             // MARK: Profil
@@ -62,6 +94,39 @@ struct AccountView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
         }
+        .onAppear {
+            loadAccountSettings()
+        }
+    }
+
+    private func saveAccountSettings() {
+        UserDefaults.standard.set(name, forKey: "account.name")
+        UserDefaults.standard.set(email, forKey: "account.email")
+        UserDefaults.standard.set(phone, forKey: "account.phone")
+        UserDefaults.standard.set(password, forKey: "account.password")
+
+        savedName = name
+        savedEmail = email
+        savedPhone = phone
+        savedPassword = password
+
+        showSavedMessage = true
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            showSavedMessage = false
+        }
+    }
+
+    private func loadAccountSettings() {
+        name = UserDefaults.standard.string(forKey: "account.name") ?? name
+        email = UserDefaults.standard.string(forKey: "account.email") ?? email
+        phone = UserDefaults.standard.string(forKey: "account.phone") ?? phone
+        password = UserDefaults.standard.string(forKey: "account.password") ?? password
+
+        savedName = name
+        savedEmail = email
+        savedPhone = phone
+        savedPassword = password
     }
 }
 

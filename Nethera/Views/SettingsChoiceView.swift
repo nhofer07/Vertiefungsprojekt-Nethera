@@ -13,77 +13,102 @@ struct SettingsChoiceView: View {
         NavigationStack {
             ZStack {
                 LinearGradient(
-                    colors: [Color(red: 0.05, green: 0.2, blue: 0.25), Color.black],
+                    colors: [
+                        Color(red: 0.06, green: 0.22, blue: 0.28),
+                        Color(red: 0.02, green: 0.03, blue: 0.08)
+                    ],
                     startPoint: .top,
                     endPoint: .bottom
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
+                VStack(spacing: 14) {
                     PageHeaderView(title: "Einstellungen")
-                    
-                    Spacer(minLength: 20)
-                    
+
                     GeometryReader { geometry in
-                        let totalHeight = geometry.size.height
-                        let tabBarHeight: CGFloat = 75
-                        let spacing: CGFloat = 12
-                        let cardHeight = (totalHeight - tabBarHeight - spacing) / 2
-                        
+                        let spacing: CGFloat = 14
+                        let verticalInset: CGFloat = 18
+                        let cardHeight = (geometry.size.height - spacing - verticalInset) / 2
+
                         VStack(spacing: spacing) {
                             NavigationLink(destination: SettingsView()) {
-                                DashboardCard(icon: "wifi", title: "Router-Einstellungen", subtitle: "Netzwerk & WLAN")
-                                    .frame(height: cardHeight)
+                                SettingsChoiceCard(
+                                    icon: "wifi.router",
+                                    title: "Router-Einstellungen",
+                                    subtitle: "Netzwerk, WLAN und Sicherheit",
+                                    accentColor: Color.cyan.opacity(0.85)
+                                )
+                                .frame(maxHeight: .infinity)
                             }
-                            
-                            Spacer(minLength: 5)
-                            
+                            .buttonStyle(.plain)
+                            .frame(height: cardHeight)
+
                             NavigationLink(destination: AccountView()) {
-                                DashboardCard(icon: "person.crop.circle", title: "Kontoeinstellungen", subtitle: "Profil & Sicherheit")
-                                    .frame(height: cardHeight)
+                                SettingsChoiceCard(
+                                    icon: "person.crop.circle",
+                                    title: "Kontoeinstellungen",
+                                    subtitle: "Profil, Passwort und Account",
+                                    accentColor: Color.mint.opacity(0.85)
+                                )
+                                .frame(maxHeight: .infinity)
                             }
+                            .buttonStyle(.plain)
+                            .frame(height: cardHeight)
                         }
-                        .frame(maxWidth: .infinity)
                         .padding(.horizontal, 20)
-                        .padding(.bottom, tabBarHeight)
+                        .padding(.bottom, 20)
                     }
                 }
-                .frame(maxHeight: .infinity)
             }
         }
     }
 }
 
-struct DashboardCard: View {
+struct SettingsChoiceCard: View {
     let icon: String
     let title: String
     let subtitle: String
+    let accentColor: Color
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Image(systemName: icon)
-                .resizable()
-                .scaledToFit()
-                .frame(width: 50, height: 50)
-                .foregroundColor(.white.opacity(0.9))
-            
-            Text(title)
-                .font(.title2.bold())
-                .foregroundColor(.white)
-            
-            Text(subtitle)
-                .font(.subheadline)
-                .foregroundColor(.white.opacity(0.8))
-            
-            Spacer()
+        VStack(spacing: 12) {
+            Spacer(minLength: 0)
+
+            ZStack {
+                Circle()
+                    .fill(accentColor.opacity(0.22))
+                    .frame(width: 64, height: 64)
+
+                Image(systemName: icon)
+                    .font(.system(size: 28, weight: .semibold))
+                    .foregroundColor(.white)
+            }
+
+            VStack(spacing: 6) {
+                Text(title)
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(.white)
+                    .multilineTextAlignment(.center)
+
+                Text(subtitle)
+                    .font(.subheadline)
+                    .foregroundColor(.white.opacity(0.78))
+                    .multilineTextAlignment(.center)
+            }
+
+            Spacer(minLength: 0)
         }
-        .padding(40)
+        .padding(20)
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(
-            RoundedRectangle(cornerRadius: 30)
-                .fill(Color.white.opacity(0.08))
-                .blur(radius: 2)
-                .shadow(color: Color.black.opacity(0.3), radius: 10, x: 0, y: 5)
+            RoundedRectangle(cornerRadius: 22)
+                .fill(Color.white.opacity(0.12))
         )
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(Color.white.opacity(0.18), lineWidth: 1)
+        )
+        .shadow(color: .black.opacity(0.22), radius: 8, x: 0, y: 4)
     }
 }
 

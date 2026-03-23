@@ -18,6 +18,25 @@ struct SettingsView: View {
     
     @State private var frequency = "5 GHz"
     @State private var firewall = true
+
+    @State private var savedWifiName = "Nethera"
+    @State private var savedPassword = "27N!G?4"
+    @State private var savedGuestPassword = "0N-Gast0"
+    @State private var savedNotifications = true
+    @State private var savedDarkMode = true
+    @State private var savedFrequency = "5 GHz"
+    @State private var savedFirewall = true
+    @State private var showSavedMessage = false
+
+    private var hasUnsavedChanges: Bool {
+        wifiName != savedWifiName ||
+        password != savedPassword ||
+        guestPassword != savedGuestPassword ||
+        notifications != savedNotifications ||
+        darkMode != savedDarkMode ||
+        frequency != savedFrequency ||
+        firewall != savedFirewall
+    }
     
     var body: some View {
         NavigationStack {
@@ -31,7 +50,26 @@ struct SettingsView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
-                        PageHeaderView(title: "Router-Einstellungen", showBackButton: true)
+                        PageHeaderView(title: "Router-Einstellungen", showBackButton: true) {
+                            Button {
+                                saveSettings()
+                            } label: {
+                                Image(systemName: hasUnsavedChanges ? "checkmark.circle.fill" : "checkmark.circle")
+                                    .font(.title2.weight(.bold))
+                                    .foregroundColor(hasUnsavedChanges ? Color(red: 0.35, green: 0.75, blue: 0.9) : .white.opacity(0.45))
+                                    .frame(width: 30, height: 30)
+                                    .background(Color.white.opacity(hasUnsavedChanges ? 0.14 : 0.08))
+                                    .clipShape(Circle())
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!hasUnsavedChanges)
+                        }
+
+                        if showSavedMessage {
+                            Text("Einstellungen gespeichert")
+                                .font(.caption.weight(.semibold))
+                                .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
+                        }
                         
                         VStack(spacing: 20) {
                             SectionCard(title: "Basis Einstellungen") {
@@ -67,18 +105,34 @@ struct SettingsView: View {
                 }
             }
             .toolbarColorScheme(.dark, for: .navigationBar)
-            
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                }
-            }
             .navigationBarBackButtonHidden(true)
             .toolbar(.hidden, for: .navigationBar)
             .navigationBarTitleDisplayMode(.inline)
         }
+        .onAppear {
+            loadSettings()
+        }
     }
     
     func saveSettings() {
+        UserDefaults.standard.set(wifiName, forKey: "router.wifiName")
+        UserDefaults.standard.set(password, forKey: "router.password")
+        UserDefaults.standard.set(guestPassword, forKey: "router.guestPassword")
+        UserDefaults.standard.set(notifications, forKey: "router.notifications")
+        UserDefaults.standard.set(darkMode, forKey: "router.darkMode")
+        UserDefaults.standard.set(frequency, forKey: "router.frequency")
+        UserDefaults.standard.set(firewall, forKey: "router.firewall")
+
+        savedWifiName = wifiName
+        savedPassword = password
+        savedGuestPassword = guestPassword
+        savedNotifications = notifications
+        savedDarkMode = darkMode
+        savedFrequency = frequency
+        savedFirewall = firewall
+
+        showSavedMessage = true
+
         print("Einstellungen gespeichert:")
         print("WLAN-Name: \(wifiName)")
         print("Passwort: \(password)")
@@ -87,6 +141,33 @@ struct SettingsView: View {
         print("Darkmode: \(darkMode)")
         print("Frequenz: \(frequency)")
         print("Firewall: \(firewall)")
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
+            showSavedMessage = false
+        }
+    }
+
+    func loadSettings() {
+        let loadedWifiName = UserDefaults.standard.string(forKey: "router.wifiName") ?? wifiName
+        let loadedPassword = UserDefaults.standard.string(forKey: "router.password") ?? password
+        let loadedGuestPassword = UserDefaults.standard.string(forKey: "router.guestPassword") ?? guestPassword
+        let loadedFrequency = UserDefaults.standard.string(forKey: "router.frequency") ?? frequency
+
+        wifiName = loadedWifiName
+        password = loadedPassword
+        guestPassword = loadedGuestPassword
+        notifications = UserDefaults.standard.object(forKey: "router.notifications") as? Bool ?? notifications
+        darkMode = UserDefaults.standard.object(forKey: "router.darkMode") as? Bool ?? darkMode
+        frequency = loadedFrequency
+        firewall = UserDefaults.standard.object(forKey: "router.firewall") as? Bool ?? firewall
+
+        savedWifiName = wifiName
+        savedPassword = password
+        savedGuestPassword = guestPassword
+        savedNotifications = notifications
+        savedDarkMode = darkMode
+        savedFrequency = frequency
+        savedFirewall = firewall
     }
 }
 

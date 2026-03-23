@@ -10,7 +10,7 @@ struct DevicesView: View {
         Device(name: "Neues iPad", type: "ipad", onlineTime: "8m", dataUsage: "120 MB", group: "Neu verbunden")
     ]
     
-    @State private var groups = ["Eltern","Kinder","Wohnzimmer","Neu verbunden"]
+    @State private var groups = ["Eltern","Kinder","Wohnzimmer","Neu verbunden","Gast"]
     
     @State private var showAddGroup = false
     @State private var newGroupName = ""
@@ -18,8 +18,6 @@ struct DevicesView: View {
     @State private var selectedGroupForRename = ""
     @State private var renameGroup = ""
     @State private var showRename = false
-    @State private var selectedGroupForActions: String?
-    @State private var showGroupActions = false
     @State private var groupToDelete: String?
     @State private var showDeleteGroup = false
 
@@ -78,9 +76,19 @@ struct DevicesView: View {
 
                                     Spacer()
 
-                                    Button {
-                                        selectedGroupForActions = group
-                                        showGroupActions = true
+                                    Menu {
+                                        Button("Umbenennen") {
+                                            selectedGroupForRename = group
+                                            renameGroup = group
+                                            showRename = true
+                                        }
+
+                                        if group != fallbackGroup {
+                                            Button("Gruppe löschen", role: .destructive) {
+                                                groupToDelete = group
+                                                showDeleteGroup = true
+                                            }
+                                        }
                                     } label: {
                                         Image(systemName: "ellipsis.circle")
                                             .foregroundColor(.white.opacity(0.85))
@@ -169,20 +177,6 @@ struct DevicesView: View {
                 groups[oldIndex] = newName
                 for index in devices.indices where devices[index].group == selectedGroupForRename {
                     devices[index].group = newName
-                }
-            }
-            Button("Abbrechen", role: .cancel) {}
-        }
-        .confirmationDialog("Gruppenaktionen", isPresented: $showGroupActions, titleVisibility: .visible, presenting: selectedGroupForActions) { group in
-            Button("Umbenennen") {
-                selectedGroupForRename = group
-                renameGroup = group
-                showRename = true
-            }
-            if group != fallbackGroup {
-                Button("Gruppe löschen", role: .destructive) {
-                    groupToDelete = group
-                    showDeleteGroup = true
                 }
             }
             Button("Abbrechen", role: .cancel) {}

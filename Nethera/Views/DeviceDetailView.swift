@@ -192,11 +192,11 @@ struct DeviceDetailView: View {
         .onAppear {
             refreshPresets()
         }
-        .onChange(of: device.id) { _ in
+        .onChange(of: device.id) {
             refreshPresets()
         }
-        .onChange(of: showPresetSheet) { isPresented in
-            if isPresented {
+        .onChange(of: showPresetSheet) {
+            if showPresetSheet {
                 refreshPresets()
             }
         }

@@ -10,6 +10,28 @@ import Foundation
 import SwiftUI
 
 struct AdBlockDashboardView: View {
+    @State private var blockedDomains = [
+        BlockedDomain(name: "googleads.g.doubleclick.net", time: "2m"),
+        BlockedDomain(name: "connect.facebook.com", time: "4m"),
+        BlockedDomain(name: "stats.g.doubleclick.net", time: "17m"),
+        BlockedDomain(name: "adservice.google.com", time: "29m")
+    ]
+    @State private var newBlockedDomain = ""
+
+    private func addBlockedDomain() {
+        let sanitized = newBlockedDomain
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !sanitized.isEmpty else { return }
+        guard !blockedDomains.contains(where: { $0.name == sanitized }) else {
+            newBlockedDomain = ""
+            return
+        }
+
+        blockedDomains.insert(BlockedDomain(name: sanitized, time: "jetzt"), at: 0)
+        newBlockedDomain = ""
+    }
     
     var body: some View {
         ZStack {
@@ -51,7 +73,7 @@ struct AdBlockDashboardView: View {
             )
             
             StatBox(
-                icon: "shield.lefthalf.filled",
+                icon: "chart.bar.fill",
                 number: "12,4K",
                 subtitle: "Gesamt geblockt:"
             )
@@ -61,26 +83,70 @@ struct AdBlockDashboardView: View {
     var blockedDomainsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             
-            Text("Zuletzt geblockte Domains:")
-                .font(.headline)
-                .foregroundColor(.white)
+            HStack(spacing: 8) {
+                Image(systemName: "globe")
+                    .foregroundColor(.white.opacity(0.9))
+                Text("Zuletzt geblockte Domains:")
+                    .font(.headline)
+                    .foregroundColor(.white)
+            }
             
             VStack(spacing: 12) {
-                DomainRow(name: "googleads.g.doubleclick.net", time: "2m")
-                DomainRow(name: "connect.facebook.com", time: "4m")
-                DomainRow(name: "stats.g.doubleclick.net", time: "17m")
-                DomainRow(name: "adservice.google.com", time: "29m")
+                ForEach(blockedDomains) { domain in
+                    DomainRow(name: domain.name, time: domain.time)
+                }
             }
+
+            VStack(spacing: 10) {
+                Text("Gib eine Domain ein, z. B. example.com (ohne https://).")
+                    .font(.caption)
+                    .foregroundColor(.white.opacity(0.8))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                TextField(
+                    "",
+                    text: $newBlockedDomain,
+                    prompt: Text("example.com").foregroundColor(.white.opacity(0.55))
+                )
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
+                    .foregroundColor(.white)
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.12))
+                    .cornerRadius(12)
+
+                Button {
+                    addBlockedDomain()
+                } label: {
+                    Text("Blockieren")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.blue.opacity(0.35))
+                        )
+                }
+            }
+            .buttonStyle(.plain)
         }
         .padding()
         .background(.white.opacity(0.08))
         .cornerRadius(24)
     }
     
+
+    struct BlockedDomain: Identifiable {
+        let id = UUID()
+        let name: String
+        let time: String
+    }
     var SingleStatBoxCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             SingleStatBox(
-                icon: "shield.fill",
+                icon: "checkmark.shield.fill",
                 text: "Sie haben 97% aller Anfragen blockiert!"
             )
         }
@@ -133,10 +199,14 @@ struct DomainRow: View {
     
     var body: some View {
         HStack {
-            Text("- \(name)")
-                .foregroundColor(.white)
-                .lineLimit(1)
-                .font(.title3)
+            HStack(spacing: 8) {
+                Image(systemName: "nosign")
+                    .foregroundColor(.white.opacity(0.85))
+                Text(name)
+                    .foregroundColor(.white)
+                    .lineLimit(1)
+                    .font(.title3)
+            }
             
             Spacer()
             

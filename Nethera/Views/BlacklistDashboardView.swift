@@ -10,11 +10,41 @@ import Foundation
 
 import SwiftUI
 
+private enum BlacklistTypography {
+    static let sectionTitle: Font = .title3.weight(.semibold)
+    static let rowTitle: Font = .subheadline.weight(.semibold)
+    static let rowBody: Font = .subheadline
+    static let statNumber: Font = .system(size: 30, weight: .bold)
+    static let caption: Font = .caption
+}
+
 struct BlacklistDashboardView: View {
     @State private var showBlacklistDetails = false
     @State private var gamblingEnabled = true
     @State private var adultEnabled = true
     @State private var socialEnabled = true
+    @State private var manualDomains = [
+        "win2day.at",
+        "htl-leonding.at",
+        "edufs.edu.htl-leonding.at",
+        "figma.com"
+    ]
+    @State private var newBlockedDomain = ""
+
+    private func addManualDomain() {
+        let sanitized = newBlockedDomain
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+
+        guard !sanitized.isEmpty else { return }
+        guard !manualDomains.contains(sanitized) else {
+            newBlockedDomain = ""
+            return
+        }
+
+        manualDomains.insert(sanitized, at: 0)
+        newBlockedDomain = ""
+    }
 
     var body: some View {
         NavigationStack {
@@ -34,9 +64,9 @@ struct BlacklistDashboardView: View {
                         PageHeaderView(title: "Blacklist", showBackButton: true)
 
                         VStack(spacing: 20) {
-                            blacklistExpandableCard
-                            domainListCard
                             statsRow
+                            domainListCard
+                            blacklistExpandableCard
                         }
                         .padding(.horizontal)
                     }
@@ -77,15 +107,22 @@ struct BlacklistDashboardView: View {
             .padding(.top, 8)
         } label: {
             HStack {
-                Text("Blacklists anzeigen")
-                    .font(.headline)
+                Text("Vorgefertigte Listen")
+                    .font(BlacklistTypography.sectionTitle)
                     .foregroundColor(.white)
-                Spacer()
+                    .frame(maxWidth: .infinity, alignment: .center)
             }
         }
         .tint(.white)
         .padding(20)
-        .background(.white.opacity(0.08))
+        .background(
+            RoundedRectangle(cornerRadius: 28)
+                .fill(Color.white.opacity(0.14))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 28)
+                .stroke(Color.white.opacity(0.22), lineWidth: 1)
+        )
         .cornerRadius(28)
     }
     
@@ -93,32 +130,47 @@ struct BlacklistDashboardView: View {
         VStack(alignment: .leading, spacing: 14) {
             
             Text("Manuell blockierte Domains:")
-                .font(.headline)
+                .font(BlacklistTypography.sectionTitle)
                 .foregroundColor(.white)
             
             VStack(alignment: .leading, spacing: 10) {
-                DomainItem(name: "win2day.at")
-                DomainItem(name: "htl-leonding.at")
-                DomainItem(name: "edufs.edu.htl-leonding...")
-                DomainItem(name: "figma.com")
+                ForEach(manualDomains, id: \.self) { domain in
+                    DomainItem(name: domain)
+                }
             }
-            
-            NavigationLink(destination: AddDomainView()) {
-                Text("Hinzufügen")
-                    .font(.headline)
+
+            VStack(spacing: 10) {
+                Text("Gib eine Domain ein, z. B. example.com (ohne https://).")
+                    .font(BlacklistTypography.caption)
+                    .foregroundColor(.white.opacity(0.8))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                TextField(
+                    "",
+                    text: $newBlockedDomain,
+                    prompt: Text("example.com").foregroundColor(.white.opacity(0.55))
+                )
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled(true)
                     .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill(Color.blue.opacity(0.3))
-                            .shadow(
-                                color: Color.blue.opacity(0.3),
-                                radius: 6,
-                                x: 0,
-                                y: 4
-                            )
-                    )
+                    .padding(.horizontal, 14)
+                    .padding(.vertical, 12)
+                    .background(Color.white.opacity(0.12))
+                    .cornerRadius(12)
+
+                Button {
+                    addManualDomain()
+                } label: {
+                    Text("Blockieren")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity)
+                        .padding(.vertical, 12)
+                        .background(
+                            RoundedRectangle(cornerRadius: 12)
+                                .fill(Color.blue.opacity(0.35))
+                        )
+                }
             }
             .buttonStyle(.plain)
         }
@@ -131,13 +183,13 @@ struct BlacklistDashboardView: View {
         HStack(spacing: 16) {
             
             StatMiniCard(
-                icon: "arrow.down.circle",
-                number: "7",
+                icon: "nosign",
+                number: "\(manualDomains.count)",
                 subtitle: "Individuelle Sperren"
             )
             
             StatMiniCard(
-                icon: "arrow.down.circle",
+                icon: "list.bullet",
                 number: "3",
                 subtitle: "Blacklist-Pakete aktiv"
             )
@@ -159,7 +211,7 @@ struct BlacklistDashboardView: View {
                 
                 Text(name)
                     .foregroundColor(.white)
-                    .font(.system(size: 22, weight: .bold))
+                    .font(BlacklistTypography.rowBody.weight(.semibold))
                 
                 Spacer()
             }
@@ -182,11 +234,11 @@ struct BlacklistDashboardView: View {
                     .foregroundColor(.white)
                 
                 Text(number)
-                    .font(.system(size: 34, weight: .bold))
+                    .font(BlacklistTypography.statNumber)
                     .foregroundColor(.white)
                 
                 Text(subtitle)
-                    .font(.footnote)
+                    .font(BlacklistTypography.caption)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.white.opacity(0.8))
                 
@@ -208,7 +260,7 @@ struct BlacklistDashboardView: View {
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
                     Text(title)
-                        .font(.headline)
+                        .font(BlacklistTypography.rowTitle)
                         .foregroundColor(.white)
 
                     Spacer()
@@ -224,11 +276,11 @@ struct BlacklistDashboardView: View {
 
                     VStack(alignment: .leading, spacing: 4) {
                         Text("Blockierte Domains:")
-                            .font(.caption)
+                            .font(BlacklistTypography.caption)
                             .foregroundColor(.white.opacity(0.8))
 
                         Text("\(domains) + \(moreCount) weitere")
-                            .font(.caption)
+                            .font(BlacklistTypography.caption)
                             .foregroundColor(.white.opacity(0.8))
                             .lineLimit(2)
                             .truncationMode(.tail)
@@ -237,9 +289,12 @@ struct BlacklistDashboardView: View {
             }
             .padding(16)
             .background(RoundedRectangle(cornerRadius: 22)
-                .fill(Color.white.opacity(0.08))
-                .blur(radius: 1)
+                .fill(Color.white.opacity(0.14))
                 .shadow(color: Color.black.opacity(0.15), radius: 6, x: 0, y: 4))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+            )
         }
     }
 }

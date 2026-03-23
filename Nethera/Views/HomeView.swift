@@ -27,28 +27,61 @@ struct HomeView: View {
                 
                 VStack {
                     PageHeaderView(title: "Start")
+
+                    Image("Nethera_Logo")
+                        .resizable()
+                        .scaledToFit()
+                        .frame(maxWidth: 170)
+                        .padding(.top, 8)
+                        .padding(.bottom, 2)
+                        .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                     
                     VStack(spacing: 20) {
                         
                         NavigationLink(destination: DevicesView()) {
-                            StatCard(title: "5 Geräte aktiv", subtitle: "Geräte")
+                            StatCard(
+                                iconName: "iphone.gen3",
+                                title: "Geräte",
+                                subtitle: "5 aktiv"
+                            )
                         }
+                        .buttonStyle(.plain)
                         
                         NavigationLink(destination: SpeedView()) {
-                            StatCard(title: "200 mb/s", subtitle: "Durchschnittlicher Verbrauch")
+                            StatCard(
+                                iconName: "speedometer",
+                                title: "Geschwindigkeit",
+                                subtitle: "85,7 Mb/s Download"
+                            )
                         }
+                        .buttonStyle(.plain)
                         
                         NavigationLink(destination: ParentalControlView()) {
-                            StatCard(title: "3 Geräte", subtitle: "von Kindersicherung betroffen")
+                            StatCard(
+                                iconName: "lock.shield",
+                                title: "Kindersicherung",
+                                subtitle: "3 Geräte geschützt"
+                            )
                         }
+                        .buttonStyle(.plain)
                         
                         NavigationLink(destination: AdBlockDashboardView()) {
-                            StatCard(title: "2k Domains", subtitle: "für Werbung blockiert")
+                            StatCard(
+                                iconName: "shield.lefthalf.filled",
+                                title: "AdBlock",
+                                subtitle: "138 heute blockiert"
+                            )
                         }
+                        .buttonStyle(.plain)
                         
                         NavigationLink(destination: BlacklistDashboardView()) {
-                            StatCard(title: "7 Domains", subtitle: "auf Blacklist")
+                            StatCard(
+                                iconName: "nosign",
+                                title: "Blacklist",
+                                subtitle: "4 manuelle Sperren"
+                            )
                         }
+                        .buttonStyle(.plain)
                         
                         Spacer()
                     }

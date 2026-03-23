@@ -8,7 +8,7 @@ struct ContentView: View {
     var body: some View {
         TabView(selection: $selectedTab) {
         
-            GeraeteView()
+            DevicesView()
                 .tabItem {
                     Label("Geräte", systemImage: "desktopcomputer")
                 }
@@ -20,13 +20,14 @@ struct ContentView: View {
                 }
                 .tag(1)
             
-            EinstellungenView()
+            SettingsChoiceView()
                 .tabItem {
                     Label("Einstellungen", systemImage: "gearshape")
                 }
                 .tag(2)
             
         }
+        .background(Color(red: 0.02, green: 0.03, blue: 0.08).ignoresSafeArea())
     }
 }
 
@@ -34,16 +35,3 @@ struct ContentView: View {
     ContentView()
 }
 
-struct GeraeteView: View {
-    var body: some View {
-        NavigationStack {
-            DevicesView()
-        }
-    }
-}
-
-struct EinstellungenView: View {
-    var body: some View {
-        SettingsChoiceView()
-    }
-}
