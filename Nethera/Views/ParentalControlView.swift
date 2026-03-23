@@ -23,7 +23,7 @@ struct ParentalControlView: View {
                 )
                 .ignoresSafeArea()
                 
-                VStack(spacing: 0) {
+                VStack(spacing: 10) {
                     PageHeaderView(title: "Kindersicherung", showBackButton: true)
                     
                     // Liste der Geräte
@@ -66,6 +66,7 @@ struct ParentalControlView: View {
                     .scrollContentBackground(.hidden)
                     // transparentes List-Hintergrund
                     .background(Color.clear)
+                    .padding(.horizontal)
                 }
             }
         }

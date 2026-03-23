@@ -23,7 +23,7 @@ struct AdBlockDashboardView: View {
             )
             .ignoresSafeArea()
             
-            VStack(spacing: 20) {
+            VStack(spacing: 10) {
                 PageHeaderView(title: "Geblockte Werbung", showBackButton: true)
                 
                 VStack(spacing: 20) {
@@ -34,7 +34,6 @@ struct AdBlockDashboardView: View {
                 .padding(.horizontal)
                 
             }
-            .padding(.vertical)
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
@@ -68,26 +67,6 @@ struct AdBlockDashboardView: View {
                 DomainRow(name: "connect.facebook.com", time: "4m")
                 DomainRow(name: "stats.g.doubleclick.net", time: "17m")
                 DomainRow(name: "adservice.google.com", time: "29m")
-            }
-            
-            Button {
-                
-            } label: {
-                Text("Weitere")
-                    .font(.headline)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity)
-                    .padding(.vertical, 15)
-                    .background(
-                        RoundedRectangle(cornerRadius: 25)
-                            .fill(Color.blue.opacity(0.3))
-                            .shadow(
-                                color: Color.blue.opacity(0.3),
-                                radius: 6,
-                                x: 0,
-                                y: 4
-                            )
-                    )
             }
         }
         .padding()

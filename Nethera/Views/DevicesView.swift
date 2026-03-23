@@ -40,7 +40,7 @@ struct DevicesView: View {
                         Button {
                             showAddGroup = true
                         } label: {
-                            Image(systemName: "plus")
+                            Label("Gruppe", systemImage: "folder.badge.plus")
                                 .foregroundColor(.white)
                                 .font(.title2)
                         }

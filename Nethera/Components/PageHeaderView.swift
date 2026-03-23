@@ -21,7 +21,7 @@ struct PageHeaderView<TrailingContent: View>: View {
     var body: some View {
         ZStack {
             Text(title)
-                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .font(.system(size: 22, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
                 .lineLimit(2)
