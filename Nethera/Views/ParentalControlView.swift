@@ -2,11 +2,13 @@ import SwiftUI
 
 struct ParentalControlView: View {
 
-    let devices = [
+    @State private var devices = [
         Device(name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Kinder"),
         Device(name: "iPad Wohnzimmer", type: "ipad", onlineTime: "4h", dataUsage: "10 GB", group: "Wohnzimmer"),
         Device(name: "Laptop Anna", type: "laptopcomputer", onlineTime: "6h", dataUsage: "20 GB", group: "Eltern")
     ]
+
+    private let groups = ["Eltern", "Kinder", "Wohnzimmer", "Neu verbunden", "Gast"]
 
     var body: some View {
         
@@ -27,9 +29,10 @@ struct ParentalControlView: View {
                     PageHeaderView(title: "Kindersicherung", showBackButton: true)
                     
                     // Liste der Geräte
-                    List(devices) { device in
+                    List(devices.indices, id: \.self) { index in
+                        let device = devices[index]
                         
-                        NavigationLink(destination: DeviceDetailView(device: device)) {
+                        NavigationLink(destination: DeviceDetailView(device: $devices[index], groups: groups)) {
                             
                             HStack {
                                 

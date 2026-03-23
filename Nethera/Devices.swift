@@ -13,5 +13,5 @@ struct Device: Identifiable {
     var type: String
     var onlineTime: String
     var dataUsage: String
-    var group: String
+    var group: String = "Neu verbunden"
 }

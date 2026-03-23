@@ -2,7 +2,8 @@ import SwiftUI
 
 struct DeviceDetailView: View {
 
-    let device: Device
+    @Binding var device: Device
+    let groups: [String]
     
     @State private var parentalControl = true
     @State private var prioritized = false
@@ -10,10 +11,6 @@ struct DeviceDetailView: View {
     @State private var startTime = Date()
     @State private var endTime = Date()
     
-    @State private var group = "Eltern"
-    
-    let groups = ["Eltern","Kinder","Wohnzimmer","Gast"]
-
     struct DevicePreset: Codable, Identifiable, Equatable {
         let id: UUID
         var name: String
@@ -55,7 +52,7 @@ struct DeviceDetailView: View {
         let newPreset = DevicePreset(
             id: UUID(),
             name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            group: group,
+            group: device.group,
             parentalControl: parentalControl,
             prioritized: prioritized,
             timeLimitEnabled: timeLimitEnabled,
@@ -68,7 +65,7 @@ struct DeviceDetailView: View {
     }
 
     private func applyPreset(_ preset: DevicePreset) {
-        group = preset.group
+        device.group = preset.group
         parentalControl = preset.parentalControl
         prioritized = preset.prioritized
         timeLimitEnabled = preset.timeLimitEnabled
@@ -83,6 +80,10 @@ struct DeviceDetailView: View {
         withAnimation {
             presets = existingPresets
         }
+    }
+
+    private func refreshPresets() {
+        presets = loadPresets()
     }
 
     var body: some View {
@@ -117,7 +118,7 @@ struct DeviceDetailView: View {
                             .foregroundColor(.white)
                             .font(.headline)
                         
-                        Picker("Gruppe", selection: $group) {
+                        Picker("Gruppe: \(device.group)", selection: $device.group) {
                             ForEach(groups, id:\.self) { g in
                                 Text(g)
                             }
@@ -188,14 +189,25 @@ struct DeviceDetailView: View {
                 .padding()
             }
         }
+        .onAppear {
+            refreshPresets()
+        }
+        .onChange(of: device.id) { _ in
+            refreshPresets()
+        }
+        .onChange(of: showPresetSheet) { isPresented in
+            if isPresented {
+                refreshPresets()
+            }
+        }
         .toolbar {
             
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
-                    presets = loadPresets()
+                    refreshPresets()
                     showPresetSheet = true
                 } label: {
-                    Image(systemName: "square.and.arrow.down")
+                    Image(systemName: "slider.horizontal.3")
                         .font(.title2)
                         .foregroundColor(.white)
                         .frame(width: 40, height: 40)
@@ -348,6 +360,9 @@ struct DeviceDetailView: View {
                         .padding()
                     }
                 }
+                .onAppear {
+                    refreshPresets()
+                }
                 .toolbar {
                     ToolbarItem(placement: .navigationBarTrailing) {
                         Button("Fertig") {
@@ -364,13 +379,14 @@ struct DeviceDetailView: View {
 #Preview {
     NavigationStack {
         DeviceDetailView(
-            device: Device(
+            device: .constant(Device(
                 name: "iPhone von Nico",
                 type: "iphone.homebutton",
                 onlineTime: "12h",
                 dataUsage: "57 GB",
                 group: "Eltern"
-            )
+            )),
+            groups: ["Eltern", "Kinder", "Wohnzimmer", "Neu verbunden"]
         )
     }
 }

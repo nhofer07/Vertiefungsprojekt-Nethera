@@ -32,6 +32,9 @@ struct AdBlockDashboardView: View {
                     SingleStatBoxCard
                 }
                 .padding(.horizontal)
+                .padding(.top, 8)
+                
+                Spacer()
                 
             }
         }

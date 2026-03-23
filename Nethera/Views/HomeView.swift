@@ -31,7 +31,7 @@ struct HomeView: View {
                     VStack(spacing: 20) {
                         
                         NavigationLink(destination: DevicesView()) {
-                            StatCard(title: "11 Geräte aktiv", subtitle: "Geräte")
+                            StatCard(title: "5 Geräte aktiv", subtitle: "Geräte")
                         }
                         
                         NavigationLink(destination: SpeedView()) {
