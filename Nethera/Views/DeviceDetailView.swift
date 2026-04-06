@@ -380,6 +380,7 @@ struct DeviceDetailView: View {
     NavigationStack {
         DeviceDetailView(
             device: .constant(Device(
+                id: UUID(),
                 name: "iPhone von Nico",
                 type: "iphone.homebutton",
                 onlineTime: "12h",

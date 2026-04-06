@@ -28,13 +28,6 @@ struct HomeView: View {
                 VStack {
                     PageHeaderView(title: "Start")
 
-                    Image("Nethera_Logo")
-                        .resizable()
-                        .scaledToFit()
-                        .frame(maxWidth: 170)
-                        .padding(.top, 8)
-                        .padding(.bottom, 2)
-                        .shadow(color: .black.opacity(0.25), radius: 8, x: 0, y: 4)
                     
                     VStack(spacing: 20) {
                         

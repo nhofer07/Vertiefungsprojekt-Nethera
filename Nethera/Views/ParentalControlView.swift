@@ -3,9 +3,9 @@ import SwiftUI
 struct ParentalControlView: View {
 
     @State private var devices = [
-        Device(name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Kinder"),
-        Device(name: "iPad Wohnzimmer", type: "ipad", onlineTime: "4h", dataUsage: "10 GB", group: "Wohnzimmer"),
-        Device(name: "Laptop Anna", type: "laptopcomputer", onlineTime: "6h", dataUsage: "20 GB", group: "Eltern")
+        Device(id: UUID(), name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Kinder"),
+        Device(id: UUID(), name: "iPad Wohnzimmer", type: "ipad", onlineTime: "4h", dataUsage: "10 GB", group: "Wohnzimmer"),
+        Device(id: UUID(), name: "Laptop Anna", type: "laptopcomputer", onlineTime: "6h", dataUsage: "20 GB", group: "Eltern")
     ]
 
     private let groups = ["Eltern", "Kinder", "Wohnzimmer", "Neu verbunden", "Gast"]

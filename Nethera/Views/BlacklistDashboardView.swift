@@ -65,8 +65,8 @@ struct BlacklistDashboardView: View {
 
                         VStack(spacing: 20) {
                             statsRow
-                            domainListCard
-                            blacklistExpandableCard
+                            manualDomainsCard
+                            blacklistPackagesCard
                         }
                         .padding(.horizontal)
                     }
@@ -79,41 +79,55 @@ struct BlacklistDashboardView: View {
     }
     
 
+        private var blacklistPackagesCard: some View {
+        VStack(spacing: 12) {
+            Button {
+                withAnimation(.easeInOut(duration: 0.2)) {
+                    showBlacklistDetails.toggle()
+                }
+            } label: {
+                ZStack {
+                    Text("Vorgefertigte Listen")
+                        .font(BlacklistTypography.sectionTitle)
+                        .foregroundColor(.white)
+                        .frame(maxWidth: .infinity, alignment: .center)
 
-    var blacklistExpandableCard: some View {
-        DisclosureGroup(isExpanded: $showBlacklistDetails) {
-            VStack(spacing: 12) {
-                ExpandableBlacklistRow(
-                    title: "Glücksspiele",
-                    domains: "bet365.com, bwin.com, tipico.de, win2day.at, royalvegas.com...",
-                    moreCount: 43,
-                    isOn: $gamblingEnabled
-                )
-
-                ExpandableBlacklistRow(
-                    title: "18+ Inhalte",
-                    domains: "pornhub.com, youporn.com, brazzers.com, susi.live, onlyfans.com...",
-                    moreCount: 213,
-                    isOn: $adultEnabled
-                )
-
-                ExpandableBlacklistRow(
-                    title: "Social-Media",
-                    domains: "facebook.com, instagram.com, tiktok.com, snapchat.com, x.com...",
-                    moreCount: 13,
-                    isOn: $socialEnabled
-                )
+                    HStack {
+                        Spacer()
+                        Image(systemName: showBlacklistDetails ? "chevron.down" : "chevron.right")
+                            .font(.subheadline.weight(.semibold))
+                            .foregroundColor(.white)
+                    }
+                }
             }
-            .padding(.top, 8)
-        } label: {
-            HStack {
-                Text("Vorgefertigte Listen")
-                    .font(BlacklistTypography.sectionTitle)
-                    .foregroundColor(.white)
-                    .frame(maxWidth: .infinity, alignment: .center)
+            .buttonStyle(.plain)
+
+            if showBlacklistDetails {
+                VStack(spacing: 12) {
+                    ExpandableBlacklistRow(
+                        title: "Glücksspiele",
+                        domains: "bet365.com, bwin.com, tipico.de, win2day.at, royalvegas.com...",
+                        moreCount: 43,
+                        isOn: $gamblingEnabled
+                    )
+
+                    ExpandableBlacklistRow(
+                        title: "18+ Inhalte",
+                        domains: "pornhub.com, youporn.com, brazzers.com, susi.live, onlyfans.com...",
+                        moreCount: 213,
+                        isOn: $adultEnabled
+                    )
+
+                    ExpandableBlacklistRow(
+                        title: "Social-Media",
+                        domains: "facebook.com, instagram.com, tiktok.com, snapchat.com, x.com...",
+                        moreCount: 13,
+                        isOn: $socialEnabled
+                    )
+                }
+                .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .tint(.white)
         .padding(20)
         .background(
             RoundedRectangle(cornerRadius: 28)
@@ -126,60 +140,74 @@ struct BlacklistDashboardView: View {
         .cornerRadius(28)
     }
     
-    var domainListCard: some View {
+    private var manualDomainsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
             
             Text("Manuell blockierte Domains:")
                 .font(BlacklistTypography.sectionTitle)
                 .foregroundColor(.white)
-            
-            VStack(alignment: .leading, spacing: 10) {
-                ForEach(manualDomains, id: \.self) { domain in
-                    DomainItem(name: domain)
-                }
-            }
 
-            VStack(spacing: 10) {
-                Text("Gib eine Domain ein, z. B. example.com (ohne https://).")
-                    .font(BlacklistTypography.caption)
-                    .foregroundColor(.white.opacity(0.8))
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                TextField(
-                    "",
-                    text: $newBlockedDomain,
-                    prompt: Text("example.com").foregroundColor(.white.opacity(0.55))
-                )
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.12))
-                    .cornerRadius(12)
-
-                Button {
-                    addManualDomain()
-                } label: {
-                    Text("Blockieren")
-                        .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white)
-                        .frame(maxWidth: .infinity)
-                        .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.blue.opacity(0.35))
-                        )
-                }
-            }
-            .buttonStyle(.plain)
+            manualDomainList
+            manualDomainEntry
         }
         .padding()
         .background(.white.opacity(0.08))
         .cornerRadius(28)
     }
+
+    private var manualDomainList: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            ForEach(manualDomains, id: \.self) { domain in
+                DomainItem(name: domain)
+            }
+        }
+    }
+
+    private var manualDomainEntry: some View {
+        VStack(spacing: 10) {
+            Text("Gib eine Domain ein, z. B. example.com (ohne https://).")
+                .font(BlacklistTypography.caption)
+                .foregroundColor(.white.opacity(0.8))
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            domainTextField
+            blockButton
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var domainTextField: some View {
+        TextField(
+            "",
+            text: $newBlockedDomain,
+            prompt: Text("example.com").foregroundColor(.white.opacity(0.55))
+        )
+        .textInputAutocapitalization(.never)
+        .autocorrectionDisabled(true)
+        .foregroundColor(.white)
+        .padding(.horizontal, 14)
+        .padding(.vertical, 12)
+        .background(Color.white.opacity(0.12))
+        .cornerRadius(12)
+    }
+
+    private var blockButton: some View {
+        Button {
+            addManualDomain()
+        } label: {
+            Text("Blockieren")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.white)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 12)
+                .background(
+                    RoundedRectangle(cornerRadius: 12)
+                        .fill(Color.blue.opacity(0.35))
+                )
+        }
+    }
     
-    var statsRow: some View {
+    private var statsRow: some View {
         HStack(spacing: 16) {
             
             StatMiniCard(
