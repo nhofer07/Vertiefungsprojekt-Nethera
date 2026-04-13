@@ -9,8 +9,133 @@ private struct DeviceDragItem: Codable, Transferable {
     }
 }
 
-struct DevicesView: View {
+private struct GroupEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
 
+    let title: String
+    let subtitle: String
+    let confirmLabel: String
+    let initialName: String
+    let onConfirm: (String) -> Void
+
+    @State private var name: String
+
+    init(
+        title: String,
+        subtitle: String,
+        confirmLabel: String,
+        initialName: String = "",
+        onConfirm: @escaping (String) -> Void
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.confirmLabel = confirmLabel
+        self.initialName = initialName
+        self.onConfirm = onConfirm
+        _name = State(initialValue: initialName)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.18, blue: 0.22),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                VStack(spacing: 20) {
+                    VStack(spacing: 8) {
+                        Text(title)
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Name")
+                            .font(.headline)
+                            .foregroundColor(.white)
+
+                        TextField(
+                            "Gruppenname",
+                            text: $name,
+                            prompt: Text("Gruppenname").foregroundColor(.white.opacity(0.45))
+                        )
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 14)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    .padding(18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 22)
+                            .fill(Color.white.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+
+                    Button {
+                        confirm()
+                    } label: {
+                        Text(confirmLabel)
+                            .font(.headline.weight(.semibold))
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+
+                    Spacer()
+                }
+                .padding()
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.white)
+                    }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        confirm()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    private func confirm() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        onConfirm(trimmed)
+        dismiss()
+    }
+}
+
+struct DevicesView: View {
     private static let devicesKey = "devices.list"
     private static let groupsKey = "devices.groups"
 
@@ -27,18 +152,62 @@ struct DevicesView: View {
     @State private var devices: [Device] = Self.loadDevices()
     @State private var groups: [String] = Self.loadGroups()
 
-    @State private var showAddGroup = false
-    @State private var newGroupName = ""
-
-    @State private var selectedGroupForRename = ""
-    @State private var renameGroup = ""
-    @State private var showRename = false
+    @State private var showGroupSheet = false
+    @State private var groupSheetMode: GroupSheetMode = .create
 
     @State private var groupToDelete: String?
     @State private var showDeleteGroup = false
     @State private var targetedDropGroup: String?
 
+    @State private var groupBlocklistTarget: GroupBlocklistTarget?
+
+    private struct GroupBlocklistTarget: Identifiable {
+        let id = UUID()
+        let group: String
+    }
+
     private let fallbackGroup = "Neu verbunden"
+
+    private enum GroupSheetMode {
+        case create
+        case rename(String)
+
+        var title: String {
+            switch self {
+            case .create:
+                return "Neue Gruppe"
+            case .rename:
+                return "Gruppe umbenennen"
+            }
+        }
+
+        var subtitle: String {
+            switch self {
+            case .create:
+                return "Lege eine neue Gerätegruppe an."
+            case .rename:
+                return "Passe den Namen deiner Gruppe an."
+            }
+        }
+
+        var confirmLabel: String {
+            switch self {
+            case .create:
+                return "Gruppe erstellen"
+            case .rename:
+                return "Änderung speichern"
+            }
+        }
+
+        var initialName: String {
+            switch self {
+            case .create:
+                return ""
+            case .rename(let oldName):
+                return oldName
+            }
+        }
+    }
 
     private static func loadDevices() -> [Device] {
         guard let data = UserDefaults.standard.data(forKey: devicesKey),
@@ -77,31 +246,44 @@ struct DevicesView: View {
         guard let index = devices.firstIndex(where: { $0.id == deviceID }) else { return }
         guard devices[index].group != group else { return }
 
-        withAnimation {
+        withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
             devices[index].group = group
         }
 
         saveDevices()
     }
 
-    private func renameSelectedGroup() {
-        let newName = renameGroup.trimmingCharacters(in: .whitespacesAndNewlines)
+    private func openCreateGroupSheet() {
+        groupSheetMode = .create
+        showGroupSheet = true
+    }
 
-        guard !newName.isEmpty,
-              let oldIndex = groups.firstIndex(of: selectedGroupForRename) else { return }
+    private func openRenameGroupSheet(for group: String) {
+        groupSheetMode = .rename(group)
+        showGroupSheet = true
+    }
 
-        if newName != selectedGroupForRename && groups.contains(newName) {
-            return
+    private func submitGroupName(_ name: String) {
+        switch groupSheetMode {
+        case .create:
+            guard !groups.contains(name) else { return }
+            groups.append(name)
+            saveGroups()
+
+        case .rename(let oldName):
+            guard let oldIndex = groups.firstIndex(of: oldName) else { return }
+            guard name == oldName || !groups.contains(name) else { return }
+
+            groups[oldIndex] = name
+
+            for index in devices.indices where devices[index].group == oldName {
+                devices[index].group = name
+            }
+
+            NetheraStorage.renameGroupBlocklist(from: oldName, to: name)
+            saveGroups()
+            saveDevices()
         }
-
-        groups[oldIndex] = newName
-
-        for index in devices.indices where devices[index].group == selectedGroupForRename {
-            devices[index].group = newName
-        }
-
-        saveGroups()
-        saveDevices()
     }
 
     private func deleteGroup(_ group: String) {
@@ -114,8 +296,17 @@ struct DevicesView: View {
             devices[index].group = fallbackGroup
         }
 
+        NetheraStorage.deleteGroupBlocklist(for: group)
         saveGroups()
         saveDevices()
+    }
+
+    private func deviceSettings(for device: Device) -> DeviceSettings {
+        NetheraStorage.deviceSettings(for: device.id)
+    }
+
+    private func blocklistProfile(for group: String) -> BlocklistProfile {
+        NetheraStorage.groupBlocklist(for: group)
     }
 
     var body: some View {
@@ -134,18 +325,22 @@ struct DevicesView: View {
                 VStack(spacing: 0) {
                     PageHeaderView(title: "Geräte", showBackButton: true) {
                         Button {
-                            showAddGroup = true
+                            openCreateGroupSheet()
                         } label: {
-                            Label("Gruppe", systemImage: "folder.badge.plus")
+                            Image(systemName: "folder.badge.plus")
                                 .foregroundColor(.white)
-                                .font(.title2)
+                                .font(.title3)
                         }
                     }
 
-                    ScrollView {
-                        LazyVStack(spacing: 14) {
-                            ForEach(groups, id: \.self) { group in
-                                groupSection(for: group)
+                    ScrollView(showsIndicators: false) {
+                        VStack(spacing: 10) {
+                            infoBanner
+
+                            LazyVStack(spacing: 14) {
+                                ForEach(groups, id: \.self) { group in
+                                    groupSection(for: group)
+                                }
                             }
                         }
                         .padding(.horizontal, 12)
@@ -159,28 +354,23 @@ struct DevicesView: View {
         .onAppear {
             ensureFallbackGroupExists()
         }
-        .alert("Neue Gruppe", isPresented: $showAddGroup) {
-            TextField("Gruppenname", text: $newGroupName)
-
-            Button("Erstellen") {
-                let name = newGroupName.trimmingCharacters(in: .whitespacesAndNewlines)
-                guard !name.isEmpty, !groups.contains(name) else { return }
-
-                groups.append(name)
-                newGroupName = ""
-                saveGroups()
-            }
-
-            Button("Abbrechen", role: .cancel) { }
+        .sheet(isPresented: $showGroupSheet) {
+            GroupEditorSheet(
+                title: groupSheetMode.title,
+                subtitle: groupSheetMode.subtitle,
+                confirmLabel: groupSheetMode.confirmLabel,
+                initialName: groupSheetMode.initialName,
+                onConfirm: submitGroupName
+            )
         }
-        .alert("Gruppe umbenennen", isPresented: $showRename) {
-            TextField("Neuer Name", text: $renameGroup)
-
-            Button("Speichern") {
-                renameSelectedGroup()
+        .sheet(item: $groupBlocklistTarget) { target in
+            BlocklistEditorSheet(
+                title: "Gruppen-Blocklist",
+                subtitle: target.group,
+                initialProfile: blocklistProfile(for: target.group)
+            ) { profile in
+                NetheraStorage.saveGroupBlocklist(profile, for: target.group)
             }
-
-            Button("Abbrechen", role: .cancel) { }
         }
         .alert("Gruppe entfernen", isPresented: $showDeleteGroup, presenting: groupToDelete) { group in
             Button("Entfernen", role: .destructive) {
@@ -193,13 +383,44 @@ struct DevicesView: View {
         }
     }
 
+    private var infoBanner: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "hand.tap")
+                .foregroundColor(.cyan)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Geräte verschieben")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                Text("Halte ein Gerät links am Griff und ziehe es direkt in eine andere Gruppe.")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.72))
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.white.opacity(0.08))
+        )
+    }
+
     @ViewBuilder
     private func groupSection(for group: String) -> some View {
         let groupDevices = devices.filter { $0.group == group }
         let isDropTarget = targetedDropGroup == group
+        let groupBlocklist = blocklistProfile(for: group)
 
         VStack(alignment: .leading, spacing: 10) {
-            groupHeader(for: group, deviceCount: groupDevices.count, isDropTarget: isDropTarget)
+            groupHeader(
+                for: group,
+                deviceCount: groupDevices.count,
+                isDropTarget: isDropTarget,
+                groupBlocklist: groupBlocklist
+            )
 
             if groupDevices.isEmpty {
                 emptyGroupState
@@ -213,14 +434,14 @@ struct DevicesView: View {
         }
         .padding(14)
         .background(
-            RoundedRectangle(cornerRadius: 16)
+            RoundedRectangle(cornerRadius: 18)
                 .fill(
                     isDropTarget
                     ? Color(red: 0.14, green: 0.22, blue: 0.28)
                     : Color(red: 0.07, green: 0.11, blue: 0.16)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: 16)
+                    RoundedRectangle(cornerRadius: 18)
                         .stroke(
                             isDropTarget
                             ? Color.cyan.opacity(0.8)
@@ -229,7 +450,7 @@ struct DevicesView: View {
                         )
                 )
         )
-        .contentShape(RoundedRectangle(cornerRadius: 16))
+        .contentShape(RoundedRectangle(cornerRadius: 18))
         .dropDestination(for: DeviceDragItem.self) { items, _ in
             guard let draggedDevice = items.first else { return false }
             moveDevice(withID: draggedDevice.id, to: group)
@@ -244,35 +465,63 @@ struct DevicesView: View {
         }
     }
 
-    private func groupHeader(for group: String, deviceCount: Int, isDropTarget: Bool) -> some View {
+    private func groupHeader(
+        for group: String,
+        deviceCount: Int,
+        isDropTarget: Bool,
+        groupBlocklist: BlocklistProfile
+    ) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text(group)
-                    .foregroundColor(.white)
-                    .font(.headline)
+            HStack(alignment: .top) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
+                        Text(group)
+                            .foregroundColor(.white)
+                            .font(.headline)
 
-                Text("(\(deviceCount))")
-                    .foregroundColor(.white.opacity(0.6))
-                    .font(.subheadline)
+                        Text("\(deviceCount)")
+                            .foregroundColor(.white.opacity(0.7))
+                            .font(.caption.weight(.semibold))
+                            .padding(.horizontal, 8)
+                            .padding(.vertical, 4)
+                            .background(Color.white.opacity(0.08))
+                            .clipShape(Capsule())
+                    }
+
+                    if groupBlocklist.hasActiveRules {
+                        Label(groupBlocklist.summaryText, systemImage: "shield.lefthalf.filled")
+                            .font(.caption)
+                            .foregroundColor(.cyan.opacity(0.95))
+                    }
+                }
 
                 Spacer()
 
                 Menu {
-                    Button("Umbenennen") {
-                        selectedGroupForRename = group
-                        renameGroup = group
-                        showRename = true
+                    Button {
+                        groupBlocklistTarget = GroupBlocklistTarget(group: group)
+                    } label: {
+                        Label("Blocklist bearbeiten", systemImage: "shield")
+                    }
+
+                    Button {
+                        openRenameGroupSheet(for: group)
+                    } label: {
+                        Label("Umbenennen", systemImage: "pencil")
                     }
 
                     if group != fallbackGroup {
-                        Button("Gruppe löschen", role: .destructive) {
+                        Button(role: .destructive) {
                             groupToDelete = group
                             showDeleteGroup = true
+                        } label: {
+                            Label("Gruppe löschen", systemImage: "trash")
                         }
                     }
                 } label: {
                     Image(systemName: "ellipsis.circle")
                         .foregroundColor(.white.opacity(0.85))
+                        .font(.title3)
                 }
                 .buttonStyle(.plain)
             }
@@ -288,6 +537,7 @@ struct DevicesView: View {
 
                     Spacer()
                 }
+                .transition(.opacity)
             }
         }
     }
@@ -307,7 +557,9 @@ struct DevicesView: View {
     }
 
     private func deviceRow(at index: Int) -> some View {
-        NavigationLink(destination: DeviceDetailView(device: $devices[index], groups: groups)) {
+        let settings = deviceSettings(for: devices[index])
+
+        return NavigationLink(destination: DeviceDetailView(device: $devices[index], groups: groups)) {
             HStack(spacing: 12) {
                 Image(systemName: "line.3.horizontal")
                     .font(.caption.weight(.semibold))
@@ -321,13 +573,24 @@ struct DevicesView: View {
                     .frame(width: 35)
                     .foregroundColor(.white)
 
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: 5) {
                     Text(devices[index].name)
                         .foregroundColor(.white)
+                        .font(.body.weight(.medium))
 
                     Text("Online • \(devices[index].onlineTime)")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.7))
+
+                    HStack(spacing: 8) {
+                        if settings.prioritized {
+                            infoChip(label: "Priorisiert", icon: "bolt.fill", tint: .yellow)
+                        }
+
+                        if settings.blocklist.hasActiveRules {
+                            infoChip(label: "Eigene Blocklist", icon: "shield", tint: .cyan)
+                        }
+                    }
                 }
 
                 Spacer()
@@ -337,11 +600,24 @@ struct DevicesView: View {
             }
             .padding(12)
             .background(
-                RoundedRectangle(cornerRadius: 12)
+                RoundedRectangle(cornerRadius: 14)
                     .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
             )
         }
         .buttonStyle(.plain)
+    }
+
+    private func infoChip(label: String, icon: String, tint: Color) -> some View {
+        HStack(spacing: 5) {
+            Image(systemName: icon)
+            Text(label)
+        }
+        .font(.caption2.weight(.semibold))
+        .foregroundColor(tint)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 4)
+        .background(tint.opacity(0.12))
+        .clipShape(Capsule())
     }
 }
 

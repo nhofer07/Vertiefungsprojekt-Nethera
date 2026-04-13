@@ -1,207 +1,197 @@
 import SwiftUI
 
-struct DeviceDetailView: View {
+private struct PresetEditorSheet: View {
+    @Environment(\.dismiss) private var dismiss
 
+    let title: String
+    let confirmLabel: String
+    let initialName: String
+    let subtitle: String
+    let onConfirm: (String) -> Void
+
+    @State private var name: String
+
+    init(
+        title: String,
+        confirmLabel: String,
+        initialName: String,
+        subtitle: String,
+        onConfirm: @escaping (String) -> Void
+    ) {
+        self.title = title
+        self.confirmLabel = confirmLabel
+        self.initialName = initialName
+        self.subtitle = subtitle
+        self.onConfirm = onConfirm
+        _name = State(initialValue: initialName)
+    }
+
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.18, blue: 0.22),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                VStack(spacing: 20) {
+                    VStack(spacing: 8) {
+                        Text(title)
+                            .font(.largeTitle.bold())
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.center)
+
+                        Text(subtitle)
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.7))
+                            .multilineTextAlignment(.center)
+                    }
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        Text("Preset-Name")
+                            .font(.headline)
+                            .foregroundColor(.white)
+
+                        TextField(
+                            "Preset Name",
+                            text: $name,
+                            prompt: Text("Preset Name").foregroundColor(.white.opacity(0.45))
+                        )
+                        .foregroundColor(.white)
+                        .padding(.horizontal, 14)
+                        .padding(.vertical, 14)
+                        .background(Color.white.opacity(0.08))
+                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+                    .padding(18)
+                    .background(
+                        RoundedRectangle(cornerRadius: 22)
+                            .fill(Color.white.opacity(0.1))
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 22)
+                                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                            )
+                    )
+
+                    Button {
+                        confirm()
+                    } label: {
+                        Text(confirmLabel)
+                            .font(.headline.weight(.semibold))
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+
+                    Spacer()
+                }
+                .padding()
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button {
+                        dismiss()
+                    } label: {
+                        Image(systemName: "xmark")
+                            .foregroundColor(.white)
+                    }
+                }
+
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        confirm()
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(.white)
+                    }
+                }
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    private func confirm() {
+        let trimmed = name.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else { return }
+        onConfirm(trimmed)
+        dismiss()
+    }
+}
+
+struct DeviceDetailView: View {
     @Binding var device: Device
     let groups: [String]
-    
+
     @State private var parentalControl = true
     @State private var prioritized = false
     @State private var timeLimitEnabled = false
     @State private var startTime = Date()
     @State private var endTime = Date()
-    
-    struct DevicePreset: Codable, Identifiable, Equatable {
-        let id: UUID
-        var name: String
-        var group: String
-        var parentalControl: Bool
-        var prioritized: Bool
-        var timeLimitEnabled: Bool
-        var startTime: Date
-        var endTime: Date
-    }
-
-    private let presetsKey = "SavedDevicePresets"
+    @State private var deviceBlocklist = BlocklistProfile()
 
     @State private var showPresetSheet = false
-    @State private var presetName: String = ""
-    @State private var saveErrorMessage: String?
+    @State private var showCreatePresetSheet = false
+    @State private var presetToEdit: DevicePreset?
     @State private var presets: [DevicePreset] = []
+    @State private var showBlocklistSheet = false
 
-    private func loadPresets() -> [DevicePreset] {
-        guard let data = UserDefaults.standard.data(forKey: presetsKey) else { return [] }
-        do {
-            return try JSONDecoder().decode([DevicePreset].self, from: data)
-        } catch {
-            return []
-        }
-    }
-
-    private func savePresets(_ presets: [DevicePreset]) {
-        do {
-            let data = try JSONEncoder().encode(presets)
-            UserDefaults.standard.set(data, forKey: presetsKey)
-        } catch {
-            saveErrorMessage = "Konnte Presets nicht speichern."
-        }
-    }
-
-    private func saveCurrentAsPreset(named name: String) {
-        var existingPresets = loadPresets()
-        let newPreset = DevicePreset(
-            id: UUID(),
-            name: name.trimmingCharacters(in: .whitespacesAndNewlines),
-            group: device.group,
+    private var currentSettings: DeviceSettings {
+        DeviceSettings(
             parentalControl: parentalControl,
             prioritized: prioritized,
             timeLimitEnabled: timeLimitEnabled,
             startTime: startTime,
-            endTime: endTime
+            endTime: endTime,
+            blocklist: deviceBlocklist
         )
-        existingPresets.append(newPreset)
-        savePresets(existingPresets)
-        presets = existingPresets
-    }
-
-    private func applyPreset(_ preset: DevicePreset) {
-        device.group = preset.group
-        parentalControl = preset.parentalControl
-        prioritized = preset.prioritized
-        timeLimitEnabled = preset.timeLimitEnabled
-        startTime = preset.startTime
-        endTime = preset.endTime
-    }
-
-    private func deletePreset(_ preset: DevicePreset) {
-        var existingPresets = loadPresets()
-        existingPresets.removeAll { $0.id == preset.id }
-        savePresets(existingPresets)
-        withAnimation {
-            presets = existingPresets
-        }
-    }
-
-    private func refreshPresets() {
-        presets = loadPresets()
     }
 
     var body: some View {
-        
         ZStack {
             LinearGradient(
-                colors: [Color(red: 0.08, green: 0.18, blue: 0.22),
-                         Color(red: 0.02, green: 0.02, blue: 0.05)],
+                colors: [
+                    Color(red: 0.08, green: 0.18, blue: 0.22),
+                    Color(red: 0.02, green: 0.02, blue: 0.05)
+                ],
                 startPoint: .top,
                 endPoint: .bottom
             )
             .ignoresSafeArea()
-            
-            ScrollView {
+
+            ScrollView(showsIndicators: false) {
                 VStack(spacing: 20) {
-                    
-                    Image(systemName: device.type)
-                        .font(.system(size: 50))
-                        .foregroundColor(.white)
-                        .padding()
-                    
-                    Text(device.name)
-                        .font(.title)
-                        .bold()
-                        .foregroundColor(.white)
-                    
-                    InfoCard(title: device.onlineTime, subtitle: "Online")
-                    InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
-                    
-                    VStack(alignment: .leading, spacing: 10) {
-                        Text("Gerätegruppe")
-                            .foregroundColor(.white)
-                            .font(.headline)
-                        
-                        Picker("Gruppe: \(device.group)", selection: $device.group) {
-                            ForEach(groups, id:\.self) { g in
-                                Text(g)
-                            }
-                        }
-                        .pickerStyle(.menu)
-                    }
-                    .frame(maxWidth: .infinity)
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                    )
-                    
-                    VStack(spacing: 15) {
-                        
-                        Toggle("Kindersicherung", isOn: $parentalControl)
-                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                            .foregroundColor(.white)
-                        
-                        Toggle("Gerät priorisieren", isOn: $prioritized)
-                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                            .foregroundColor(.white)
-                        
-                        Toggle("Zeitbeschränkung", isOn: $timeLimitEnabled)
-                            .toggleStyle(SwitchToggleStyle(tint: .cyan))
-                            .foregroundColor(.white)
-                        
-                        if timeLimitEnabled {
-                            VStack(spacing: 12) {
-                                
-                                HStack {
-                                    Text("Von").foregroundColor(.white)
-                                    Spacer()
-                                    DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
-                                        .labelsHidden()
-                                        .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
-                                        .colorScheme(.dark)
-                                }
-                                
-                                HStack {
-                                    Text("Bis").foregroundColor(.white)
-                                    Spacer()
-                                    DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
-                                        .labelsHidden()
-                                        .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
-                                        .colorScheme(.dark)
-                                }
-                                
-                                Text("Internet verboten von \(startTime.formatted(date: .omitted, time: .shortened)) bis \(endTime.formatted(date: .omitted, time: .shortened))")
-                                    .font(.footnote)
-                                    .foregroundColor(.white.opacity(0.7))
-                            }
-                            .colorScheme(.dark)
-                        }
-                    }
-                    .padding()
-                    .background(
-                        RoundedRectangle(cornerRadius: 16)
-                            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 16)
-                            .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
-                    )
-                    
+                    headerCard
+                    statsGrid
+                    controlsCard
+                    blocklistCard
+                    presetsHintCard
                     Spacer(minLength: 20)
                 }
                 .padding()
             }
         }
         .onAppear {
+            loadSettings()
             refreshPresets()
         }
         .onChange(of: device.id) {
+            loadSettings()
             refreshPresets()
         }
-        .onChange(of: showPresetSheet) {
-            if showPresetSheet {
-                refreshPresets()
-            }
-        }
+        .onChange(of: parentalControl) { persistSettings() }
+        .onChange(of: prioritized) { persistSettings() }
+        .onChange(of: timeLimitEnabled) { persistSettings() }
+        .onChange(of: startTime) { persistSettings() }
+        .onChange(of: endTime) { persistSettings() }
         .toolbar {
-            
             ToolbarItem(placement: .navigationBarLeading) {
                 Button {
                     refreshPresets()
@@ -213,165 +203,453 @@ struct DeviceDetailView: View {
                         .frame(width: 40, height: 40)
                 }
             }
-            
+
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button("Gerät entfernen") {
-                    print("Gerät entfernt")
+                Menu {
+                    Button {
+                        showBlocklistSheet = true
+                    } label: {
+                        Label("Blocklist bearbeiten", systemImage: "shield")
+                    }
+                } label: {
+                    Image(systemName: "ellipsis.circle")
+                        .font(.title3)
+                        .foregroundColor(.white)
                 }
-                .foregroundColor(.white)
             }
         }
-        
         .sheet(isPresented: $showPresetSheet) {
-            NavigationStack {
-                
-                ZStack {
-                    
-                    LinearGradient(
-                        colors: [Color(red: 0.08, green: 0.18, blue: 0.22),
-                                 Color(red: 0.02, green: 0.02, blue: 0.05)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                    .ignoresSafeArea()
-                    
-                    ScrollView {
-                        VStack(spacing: 20) {
-                            
-                            Text("Presets")
-                                .font(.largeTitle)
-                                .bold()
-                                .foregroundColor(.white)
-                            
-                            VStack(spacing: 12) {
-                                
-                                Text("Neues Preset")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                ZStack(alignment: .leading) {
-                                    
-                                    if presetName.isEmpty {
-                                        Text("Preset Name")
-                                            .foregroundColor(.white.opacity(0.5))
-                                            .padding(.horizontal, 14)
-                                    }
+            presetsSheet
+        }
+        .sheet(isPresented: $showBlocklistSheet) {
+            BlocklistEditorSheet(
+                title: "Geräte-Blocklist",
+                subtitle: device.name,
+                initialProfile: deviceBlocklist
+            ) { profile in
+                deviceBlocklist = profile
+                persistSettings()
+            }
+        }
+    }
 
-                                    TextField("", text: $presetName)
-                                        .padding()
-                                        .foregroundColor(.white)
-                                }
-                                .background(
-                                    RoundedRectangle(cornerRadius: 12)
-                                        .fill(Color(red: 0.12, green: 0.17, blue: 0.22))
-                                )
-                                
-                                Button {
-                                    let name = presetName.trimmingCharacters(in: .whitespacesAndNewlines)
-                                    guard !name.isEmpty else { return }
-                                    saveCurrentAsPreset(named: name)
-                                    presetName = ""
-                                } label: {
-                                    Text("Preset speichern")
-                                        .fontWeight(.semibold)
-                                        .frame(maxWidth: .infinity)
-                                        .padding()
-                                        .background(
-                                            RoundedRectangle(cornerRadius: 14)
-                                                .fill(Color(red: 0.35, green: 0.75, blue: 0.9))
-                                        )
-                                        .foregroundColor(.black)
-                                }
-                            }
-                            .padding()
-                            .background(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                            )
-                            .overlay(
-                                RoundedRectangle(cornerRadius: 18)
-                                    .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
-                            )
-                            
-                            VStack(alignment: .leading, spacing: 14) {
-                                
-                                Text("Gespeicherte Presets")
-                                    .font(.headline)
-                                    .foregroundColor(.white)
-                                
-                                ForEach(presets) { preset in
-                                    
-                                    HStack {
-                                        
-                                        Button {
-                                            applyPreset(preset)
-                                            showPresetSheet = false
-                                        } label: {
-                                            
-                                            VStack(alignment: .leading, spacing: 6) {
-                                                
-                                                Text(preset.name)
-                                                    .font(.headline)
-                                                    .foregroundColor(.white)
-                                                
-                                                Text("Gruppe: \(preset.group)")
-                                                    .font(.subheadline)
-                                                    .foregroundColor(.white.opacity(0.7))
-                                                
-                                                HStack {
-                                                    
-                                                    Label(
-                                                        preset.parentalControl ? "Kindersicherung An" : "Kindersicherung Aus",
-                                                        systemImage: preset.parentalControl ? "lock.fill" : "lock.open"
-                                                    )
-                                                    
-                                                    Spacer()
-                                                    
-                                                    if preset.prioritized {
-                                                        Label("Priorisiert", systemImage: "bolt.fill")
-                                                    }
-                                                }
-                                                .font(.footnote)
-                                                .foregroundColor(.white.opacity(0.7))
-                                            }
-                                        }
-                                        
-                                        Spacer()
-                                        
-                                        Button {
-                                            deletePreset(preset)
-                                        } label: {
-                                            Image(systemName: "trash")
-                                                .foregroundColor(.red)
-                                        }
-                                    }
-                                    .padding()
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
-                                    )
-                                    .overlay(
-                                        RoundedRectangle(cornerRadius: 16)
-                                            .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.25), lineWidth: 1)
-                                    )
-                                }
-                            }
-                        }
-                        .padding()
+    private var headerCard: some View {
+        VStack(spacing: 14) {
+            Image(systemName: device.type)
+                .font(.system(size: 50))
+                .foregroundColor(.white)
+                .padding(.top, 8)
+
+            Text(device.name)
+                .font(.title.bold())
+                .foregroundColor(.white)
+                .multilineTextAlignment(.center)
+
+            Text(device.group)
+                .font(.subheadline.weight(.medium))
+                .foregroundColor(.white.opacity(0.72))
+                .padding(.horizontal, 12)
+                .padding(.vertical, 8)
+                .background(Color.white.opacity(0.08))
+                .clipShape(Capsule())
+        }
+        .frame(maxWidth: .infinity)
+        .padding()
+        .background(cardBackground)
+    }
+
+    private var statsGrid: some View {
+        HStack(spacing: 14) {
+            InfoCard(title: device.onlineTime, subtitle: "Online")
+            InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
+        }
+    }
+
+    private var controlsCard: some View {
+        VStack(spacing: 16) {
+            cardTitle("Steuerung", icon: "switch.2")
+
+            settingsToggle(title: "Kindersicherung", subtitle: "Zusätzlicher Schutz für dieses Gerät.", isOn: $parentalControl)
+            settingsToggle(title: "Gerät priorisieren", subtitle: "Bevorzugt dieses Gerät im Netzwerk.", isOn: $prioritized)
+            settingsToggle(title: "Zeitbeschränkung", subtitle: "Schränkt die Nutzung auf feste Zeiten ein.", isOn: $timeLimitEnabled)
+
+            if timeLimitEnabled {
+                VStack(spacing: 12) {
+                    HStack {
+                        Text("Von")
+                            .foregroundColor(.white)
+                        Spacer()
+                        DatePicker("", selection: $startTime, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
+                            .colorScheme(.dark)
                     }
+
+                    HStack {
+                        Text("Bis")
+                            .foregroundColor(.white)
+                        Spacer()
+                        DatePicker("", selection: $endTime, displayedComponents: .hourAndMinute)
+                            .labelsHidden()
+                            .tint(Color(red: 0.35, green: 0.75, blue: 0.9))
+                            .colorScheme(.dark)
+                    }
+
+                    Text("Internet verboten von \(startTime.formatted(date: .omitted, time: .shortened)) bis \(endTime.formatted(date: .omitted, time: .shortened))")
+                        .font(.footnote)
+                        .foregroundColor(.white.opacity(0.7))
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
-                .onAppear {
-                    refreshPresets()
+                .padding(14)
+                .background(Color.white.opacity(0.06))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .padding()
+        .background(cardBackground)
+    }
+
+    private var blocklistCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            cardTitle("Blocklist", icon: "shield.lefthalf.filled")
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text(deviceBlocklist.hasActiveRules ? deviceBlocklist.summaryText : "Keine individuellen Regeln aktiv")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                Text("Du kannst empfohlene Listen aktivieren oder eigene Domains nur für dieses Gerät blockieren.")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.7))
+            }
+
+            Button {
+                showBlocklistSheet = true
+            } label: {
+                HStack {
+                    Image(systemName: "slider.horizontal.3")
+                    Text("Blocklist bearbeiten")
+                    Spacer()
+                    Image(systemName: "chevron.right")
                 }
-                .toolbar {
-                    ToolbarItem(placement: .navigationBarTrailing) {
-                        Button("Fertig") {
-                            showPresetSheet = false
+                .font(.headline.weight(.semibold))
+                .foregroundColor(.black)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 14)
+                .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
+        }
+        .padding()
+        .background(cardBackground)
+    }
+
+    private var presetsHintCard: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "square.stack.3d.up")
+                .foregroundColor(.cyan)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Presets")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                Text("Speichere komplette Geräteeinstellungen inklusive Blocklist und wende sie später mit einem Tap an.")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.72))
+            }
+
+            Spacer()
+        }
+        .padding(14)
+        .background(cardBackground)
+    }
+
+    private var presetsSheet: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.18, blue: 0.22),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                ScrollView(showsIndicators: false) {
+                    VStack(spacing: 18) {
+                        VStack(spacing: 8) {
+                            Text("Presets")
+                                .font(.largeTitle.bold())
+                                .foregroundColor(.white)
+
+                            Text("Schnell speichern, bearbeiten und wieder anwenden.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.72))
                         }
-                        .foregroundColor(.white)
+
+                        VStack(spacing: 12) {
+                            Button {
+                                showCreatePresetSheet = true
+                            } label: {
+                                HStack {
+                                    Image(systemName: "plus")
+                                    Text("Aktuelle Einstellungen als Preset speichern")
+                                    Spacer()
+                                }
+                                .font(.headline.weight(.semibold))
+                                .foregroundColor(.black)
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 16)
+                                .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                .clipShape(RoundedRectangle(cornerRadius: 18))
+                            }
+                        }
+
+                        VStack(alignment: .leading, spacing: 14) {
+                            Text("Gespeicherte Presets")
+                                .font(.headline)
+                                .foregroundColor(.white)
+
+                            if presets.isEmpty {
+                                VStack(spacing: 10) {
+                                    Image(systemName: "square.stack.3d.up.slash")
+                                        .font(.title2)
+                                        .foregroundColor(.white.opacity(0.55))
+
+                                    Text("Noch keine Presets gespeichert")
+                                        .foregroundColor(.white.opacity(0.72))
+                                        .font(.subheadline)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 28)
+                                .background(cardBackground)
+                            } else {
+                                ForEach(presets) { preset in
+                                    presetRow(preset)
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showPresetSheet = false
+                    } label: {
+                        Image(systemName: "checkmark")
+                            .font(.headline.weight(.bold))
+                            .foregroundColor(.white)
                     }
                 }
             }
+        }
+        .presentationDragIndicator(.visible)
+        .sheet(isPresented: $showCreatePresetSheet) {
+            PresetEditorSheet(
+                title: "Neues Preset",
+                confirmLabel: "Preset speichern",
+                initialName: "",
+                subtitle: "Speichert die aktuellen Einstellungen inklusive Blocklist."
+            ) { name in
+                saveCurrentAsPreset(named: name)
+            }
+        }
+        .sheet(item: $presetToEdit) { preset in
+            PresetEditorSheet(
+                title: "Preset bearbeiten",
+                confirmLabel: "Preset aktualisieren",
+                initialName: preset.name,
+                subtitle: "Name ändern und mit den aktuellen Einstellungen überschreiben."
+            ) { newName in
+                updatePreset(preset, withName: newName)
+            }
+        }
+    }
+
+    private func presetRow(_ preset: DevicePreset) -> some View {
+        HStack(alignment: .top, spacing: 14) {
+            Button {
+                applyPreset(preset)
+                showPresetSheet = false
+            } label: {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(preset.name)
+                        .font(.headline)
+                        .foregroundColor(.white)
+                        .multilineTextAlignment(.leading)
+
+                    HStack(spacing: 8) {
+                        presetTag(title: preset.parentalControl ? "Kindersicherung an" : "Kindersicherung aus", tint: .cyan)
+
+                        if preset.prioritized {
+                            presetTag(title: "Priorisiert", tint: .yellow)
+                        }
+
+                        if preset.blocklist.hasActiveRules {
+                            presetTag(title: "Blocklist", tint: .green)
+                        }
+                    }
+
+                    if preset.timeLimitEnabled {
+                        Text("Zeitlimit: \(preset.startTime.formatted(date: .omitted, time: .shortened)) – \(preset.endTime.formatted(date: .omitted, time: .shortened))")
+                            .font(.footnote)
+                            .foregroundColor(.white.opacity(0.68))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .buttonStyle(.plain)
+
+            VStack(spacing: 12) {
+                Button {
+                    presetToEdit = preset
+                } label: {
+                    Image(systemName: "pencil")
+                        .foregroundColor(.white.opacity(0.86))
+                }
+
+                Button(role: .destructive) {
+                    deletePreset(preset)
+                } label: {
+                    Image(systemName: "trash")
+                        .foregroundColor(.red)
+                }
+            }
+            .buttonStyle(.plain)
+        }
+        .padding()
+        .background(cardBackground)
+    }
+
+    private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            VStack(alignment: .leading, spacing: 4) {
+                Text(title)
+                    .foregroundColor(.white)
+                    .font(.headline)
+
+                Text(subtitle)
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.68))
+            }
+
+            Spacer(minLength: 12)
+
+            Toggle("", isOn: isOn)
+                .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                .labelsHidden()
+        }
+        .padding(14)
+        .background(Color.white.opacity(0.06))
+        .clipShape(RoundedRectangle(cornerRadius: 16))
+    }
+
+    private func cardTitle(_ text: String, icon: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundColor(.cyan)
+            Text(text)
+                .font(.headline)
+                .foregroundColor(.white)
+            Spacer()
+        }
+    }
+
+    private func presetTag(title: String, tint: Color) -> some View {
+        Text(title)
+            .font(.caption2.weight(.semibold))
+            .foregroundColor(tint)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.13))
+            .clipShape(Capsule())
+    }
+
+    private var cardBackground: some View {
+        RoundedRectangle(cornerRadius: 22)
+            .fill(Color(red: 0.1, green: 0.15, blue: 0.2))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+    }
+
+    private func loadSettings() {
+        let settings = NetheraStorage.deviceSettings(for: device.id)
+        parentalControl = settings.parentalControl
+        prioritized = settings.prioritized
+        timeLimitEnabled = settings.timeLimitEnabled
+        startTime = settings.startTime
+        endTime = settings.endTime
+        deviceBlocklist = settings.blocklist
+    }
+
+    private func persistSettings() {
+        NetheraStorage.saveDeviceSettings(currentSettings, for: device.id)
+    }
+
+    private func refreshPresets() {
+        presets = NetheraStorage.loadPresets()
+    }
+
+    private func saveCurrentAsPreset(named name: String) {
+        var existing = NetheraStorage.loadPresets()
+        existing.insert(
+            DevicePreset(
+                name: name,
+                group: device.group,
+                parentalControl: parentalControl,
+                prioritized: prioritized,
+                timeLimitEnabled: timeLimitEnabled,
+                startTime: startTime,
+                endTime: endTime,
+                blocklist: deviceBlocklist
+            ),
+            at: 0
+        )
+        NetheraStorage.savePresets(existing)
+        presets = existing
+    }
+
+    private func updatePreset(_ preset: DevicePreset, withName newName: String) {
+        var existing = NetheraStorage.loadPresets()
+        guard let index = existing.firstIndex(where: { $0.id == preset.id }) else { return }
+
+        existing[index].name = newName
+        existing[index].group = device.group
+        existing[index].parentalControl = parentalControl
+        existing[index].prioritized = prioritized
+        existing[index].timeLimitEnabled = timeLimitEnabled
+        existing[index].startTime = startTime
+        existing[index].endTime = endTime
+        existing[index].blocklist = deviceBlocklist
+
+        NetheraStorage.savePresets(existing)
+        presets = existing
+    }
+
+    private func applyPreset(_ preset: DevicePreset) {
+        parentalControl = preset.parentalControl
+        prioritized = preset.prioritized
+        timeLimitEnabled = preset.timeLimitEnabled
+        startTime = preset.startTime
+        endTime = preset.endTime
+        deviceBlocklist = preset.blocklist
+        persistSettings()
+    }
+
+    private func deletePreset(_ preset: DevicePreset) {
+        var existing = NetheraStorage.loadPresets()
+        existing.removeAll { $0.id == preset.id }
+        NetheraStorage.savePresets(existing)
+        withAnimation {
+            presets = existing
         }
     }
 }
