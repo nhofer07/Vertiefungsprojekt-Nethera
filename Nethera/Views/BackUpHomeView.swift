@@ -1,6 +1,7 @@
+/*
 import SwiftUI
 
-struct HomeView: View {
+// struct HomeView: View {
 
     @State private var animateContent = false
 
@@ -285,3 +286,4 @@ struct HomeView: View {
 #Preview {
     HomeView()
 }
+*/

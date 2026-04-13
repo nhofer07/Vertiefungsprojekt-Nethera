@@ -192,7 +192,7 @@ struct DeviceDetailView: View {
         .onChange(of: startTime) { persistSettings() }
         .onChange(of: endTime) { persistSettings() }
         .toolbar {
-            ToolbarItem(placement: .navigationBarLeading) {
+            ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     refreshPresets()
                     showPresetSheet = true
@@ -201,20 +201,6 @@ struct DeviceDetailView: View {
                         .font(.title2)
                         .foregroundColor(.white)
                         .frame(width: 40, height: 40)
-                }
-            }
-
-            ToolbarItem(placement: .navigationBarTrailing) {
-                Menu {
-                    Button {
-                        showBlocklistSheet = true
-                    } label: {
-                        Label("Blocklist bearbeiten", systemImage: "shield")
-                    }
-                } label: {
-                    Image(systemName: "ellipsis.circle")
-                        .font(.title3)
-                        .foregroundColor(.white)
                 }
             }
         }
@@ -395,18 +381,23 @@ struct DeviceDetailView: View {
                             Button {
                                 showCreatePresetSheet = true
                             } label: {
-                                HStack {
+                                HStack(spacing: 12) {
                                     Image(systemName: "plus")
+
                                     Text("Aktuelle Einstellungen als Preset speichern")
-                                    Spacer()
+                                        .multilineTextAlignment(.leading)
+
+                                    Spacer(minLength: 0)
                                 }
                                 .font(.headline.weight(.semibold))
                                 .foregroundColor(.black)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(.horizontal, 16)
                                 .padding(.vertical, 16)
                                 .background(Color(red: 0.35, green: 0.75, blue: 0.9))
                                 .clipShape(RoundedRectangle(cornerRadius: 18))
                             }
+                            .buttonStyle(.plain)
                         }
 
                         VStack(alignment: .leading, spacing: 14) {
