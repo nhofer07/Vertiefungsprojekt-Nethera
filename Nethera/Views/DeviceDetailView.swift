@@ -206,10 +206,6 @@ struct DeviceDetailView: View {
         }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
-                Button {
-                    refreshPresets()
-                    showPresetSheet = true
-                } label: {
                 NavigationLink(destination: presetsPage.onAppear { refreshPresets() }) {
                     Image(systemName: "slider.horizontal.3")
                         .font(.title2)
@@ -217,10 +213,6 @@ struct DeviceDetailView: View {
                         .frame(width: 40, height: 40)
                 }
             }
-        }
-        .sheet(isPresented: $showPresetSheet) {
-            presetsSheet
-
         }
         .sheet(isPresented: $showBlocklistSheet) {
             BlocklistEditorSheet(

@@ -143,8 +143,6 @@ struct HomeView: View {
 
             HStack(spacing: 10) {
                 compactMetric(value: "85,7", label: "Mb/s")
-                compactMetric(value: "3", label: "Geräte")
-                compactMetric(value: "138", label: "Blockiert")
                 compactMetric(value: "5", label: "Geräte")
                 compactMetric(value: "138", label: "Blocks")
             }
