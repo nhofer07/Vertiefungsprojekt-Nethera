@@ -2,14 +2,14 @@
 
 Nethera ist ein iOS-Prototyp für eine Router-/Kindersicherungs-App. Die App zeigt Geräte in Gruppen an, erlaubt Blocklisten für Gruppen und einzelne Geräte und kann Geräteeinstellungen als Presets speichern.
 
-Der Fokus liegt auf einer verständlichen Demo-App mit SwiftUI. Es gibt aktuell keinen echten Router, keine echte Netzwerkverbindung und kein Backend. Die Daten werden lokal am Gerät gespeichert.
+Der Fokus liegt auf einer verständlichen Demo-App mit SwiftUI. Es gibt aktuell (noch) keinen echten Router, keine echte Netzwerkverbindung und kein Backend. Die Daten werden lokal am Gerät gespeichert.
 
 ---
 
 ## Verwendete Technologien
 
 ### Swift
-Die App ist in Swift geschrieben. Swift ist die Programmiersprache für iOS-Apps. Damit werden Models, Funktionen, Speicherlogik und UI-Logik umgesetzt.
+Die App ist in Swift geschrieben. Damit werden Models, Funktionen, Speicherlogik und UI-Logik umgesetzt.
 
 Wichtige Dateien:
 
@@ -21,7 +21,7 @@ Wichtige Dateien:
 ---
 
 ### SwiftUI
-SwiftUI wird für die Oberfläche verwendet. Das bedeutet, die UI wird direkt im Code beschrieben.
+SwiftUI wird für die Oberfläche verwendet.
 
 Beispiele aus dem Projekt:
 
@@ -84,7 +84,7 @@ Sonst:
     Gerät verwendet Gruppen-Blocklist
 ```
 
-Das ist wichtig für eure Erklärung, weil dadurch klar ist:
+Logik:
 
 ```text
 Individuell > Gruppe
@@ -170,10 +170,7 @@ Gerät ziehen → Geräte-ID übertragen → Zielgruppe bekommt das Gerät
 
 ---
 
-## Warum manche Dinge schwieriger waren
-
-### Gruppen-Blocklist vs. individuelle Blocklist
-Das war wahrscheinlich der komplizierteste Teil.
+## Gruppen-Blocklist vs. individuelle Blocklist
 
 Eine Gruppe gibt Standard-Regeln vor. Ein Gerät darf aber abweichen. Deshalb darf man Gruppenwerte nicht einfach in jedes Gerät kopieren, sonst wird alles schwer zu kontrollieren.
 
@@ -251,32 +248,3 @@ Nethera/
 Nethera ist ein SwiftUI-Prototyp einer Router-/Kindersicherungs-App. Wir haben Geräte, Gruppen, Gruppen-Blocklisten, individuelle Geräteeinstellungen und Presets umgesetzt. Die Daten werden lokal mit UserDefaults gespeichert. Schwieriger war vor allem die Logik, dass Gruppenregeln automatisch für Geräte gelten, aber individuelle Einstellungen Vorrang haben. Zusätzlich mussten wir Live-Updates lösen, damit Änderungen sofort sichtbar werden und nicht erst nach einem Neustart.
 
 ---
-
-## Einschätzung
-
-Für ein HTL-Projekt nach ungefähr einem halben Jahr Unterricht ist das Projekt stark. Ihr verwendet schon einige Konzepte, die nicht ganz trivial sind:
-
-- SwiftUI Navigation
-- eigene Components
-- lokale Speicherung
-- Codable / JSON
-- State Management mit `@State` und `@Binding`
-- einfache App-Architektur
-- Drag & Drop
-- Vererbungslogik zwischen Gruppe und Gerät
-
-Was noch verbessert werden könnte:
-
-- weniger Logik direkt in den Views
-- langfristig ein eigenes ViewModel verwenden
-- UserDefaults später durch eine richtige Datenbank ersetzen, zum Beispiel SwiftData
-- Kommentare bei komplizierten Funktionen ergänzen
-- Xcode-Userfiles aus Git entfernen bzw. ignorieren
-
-Für euren aktuellen Stand ist die Lösung aber passend. Sie ist nicht übertrieben komplex und man kann sie gut erklären. Wichtig ist, dass ihr bei der Präsentation ehrlich sagt, dass es ein Prototyp ist und keine echte Router-App mit echter Netzwerksperre.
-
----
-
-## Kurzfassung für Lehrer
-
-Die App wurde mit Swift und SwiftUI entwickelt. Geräte und Gruppen werden lokal gespeichert. Gruppen können Blocklisten haben, die automatisch für alle Geräte der Gruppe gelten. Einzelne Geräte können diese Regeln überschreiben, weil individuelle Einstellungen Vorrang vor Gruppeneinstellungen haben. Presets speichern komplette Geräteeinstellungen und können später wieder angewendet oder deaktiviert werden. Für Live-Aktualisierungen verwenden wir SwiftUI-State und NotificationCenter.
