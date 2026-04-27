@@ -344,6 +344,22 @@ struct DeviceDetailView: View {
                 .background(Color(red: 0.35, green: 0.75, blue: 0.9))
                 .clipShape(RoundedRectangle(cornerRadius: 16))
             }
+
+            Button {
+                resetToGroupBlocklist()
+            } label: {
+                HStack {
+                    Image(systemName: "arrow.counterclockwise")
+                    Text("Auf Gruppe zurücksetzen")
+                    Spacer()
+                }
+                .font(.headline.weight(.semibold))
+                .foregroundColor(.white.opacity(0.9))
+                .padding(.horizontal, 14)
+                .padding(.vertical, 14)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 16))
+            }
         }
         .padding()
         .background(cardBackground)
@@ -652,13 +668,7 @@ struct DeviceDetailView: View {
 
     private func applyPreset(_ preset: DevicePreset) {
         if isActivePreset(preset) {
-            parentalControl = true
-            prioritized = false
-            timeLimitEnabled = false
-            startTime = Date()
-            endTime = Date()
-            deviceBlocklist = BlocklistProfile()
-            hasOwnBlocklist = false
+            resetToGroupBlocklist()
         } else {
             parentalControl = preset.parentalControl
             prioritized = preset.prioritized
@@ -667,8 +677,22 @@ struct DeviceDetailView: View {
             endTime = preset.endTime
             deviceBlocklist = preset.blocklist
             hasOwnBlocklist = true
+            persistSettings()
         }
+    }
+
+    private func resetToGroupBlocklist() {
+        // Löscht nur die extra Einstellungen von diesem Gerät.
+        // Danach wird wieder live die aktuelle Gruppen-Blocklist verwendet.
+        parentalControl = true
+        prioritized = false
+        timeLimitEnabled = false
+        startTime = Date()
+        endTime = Date()
+        deviceBlocklist = BlocklistProfile()
+        hasOwnBlocklist = false
         persistSettings()
+        refreshGroupBlocklistToken = UUID()
     }
 
     private func deletePreset(_ preset: DevicePreset) {

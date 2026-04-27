@@ -599,7 +599,12 @@ struct DevicesView: View {
     private func deviceRow(at index: Int) -> some View {
         let activePreset = activePreset(for: devices[index])
 
-        return NavigationLink(destination: DeviceDetailView(device: $devices[index], groups: groups)) {
+        return NavigationLink(destination:
+            DeviceDetailView(device: $devices[index], groups: groups)
+                .onDisappear {
+                    refreshGroupsToken = UUID()
+                }
+        ) {
             HStack(spacing: 12) {
                 Image(systemName: "line.3.horizontal")
                     .font(.caption.weight(.semibold))
