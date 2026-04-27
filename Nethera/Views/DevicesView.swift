@@ -35,6 +35,7 @@ private struct GroupEditorSheet: View {
         _name = State(initialValue: initialName)
     }
 
+    // gruppe adden:
     var body: some View {
         NavigationStack {
             ZStack {
@@ -129,6 +130,7 @@ struct DevicesView: View {
     private static let devicesKey = "devices.list"
     private static let groupsKey = "devices.groups"
 
+    // dummydaten:
     private static let defaultDevices = [
         Device(id: UUID(), name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Eltern"),
         Device(id: UUID(), name: "MacBook Nico", type: "laptopcomputer", onlineTime: "5h", dataUsage: "12 GB", group: "Eltern"),
@@ -308,6 +310,7 @@ struct DevicesView: View {
             preset.timeLimitEnabled == settings.timeLimitEnabled &&
             preset.blocklist == settings.blocklist &&
             (!preset.timeLimitEnabled || (
+                // Vergleicht, ob die Minuten von zwei Zeiten gleich sind
                 Calendar.current.component(.hour, from: preset.startTime) == Calendar.current.component(.hour, from: settings.startTime) &&
                 Calendar.current.component(.minute, from: preset.startTime) == Calendar.current.component(.minute, from: settings.startTime) &&
                 Calendar.current.component(.hour, from: preset.endTime) == Calendar.current.component(.hour, from: settings.endTime) &&
@@ -413,6 +416,7 @@ struct DevicesView: View {
         }
     }
 
+    // infobanner:
     private var infoBanner: some View {
         HStack(alignment: .top, spacing: 12) {
             Image(systemName: "hand.tap")
@@ -448,6 +452,7 @@ struct DevicesView: View {
         )
     }
 
+    // Erlaubt mehrere Views in einer Funktion/Property zu kombinieren (ohne return)
     @ViewBuilder
     private func groupSection(for group: String) -> some View {
         let groupDevices = devices.filter { $0.group == group }

@@ -88,6 +88,7 @@ struct BlocklistView: View {
     }
 }
 
+// einzelne boxen:
 struct BlocklistRowFloating: View {
     
     let title: String

@@ -1,6 +1,7 @@
 import SwiftUI
 
 private struct PresetEditorSheet: View {
+    // Schließt die aktuelle View (z. B. zurück zur vorherigen Seite)
     @Environment(\.dismiss) private var dismiss
 
     let title: String
@@ -26,6 +27,7 @@ private struct PresetEditorSheet: View {
         _name = State(initialValue: initialName)
     }
 
+    // preset-ansicht:
     var body: some View {
         NavigationStack {
             ZStack {
@@ -134,6 +136,7 @@ struct DeviceDetailView: View {
     @State private var showBlocklistSheet = false
     @State private var refreshGroupBlocklistToken = UUID()
 
+    // aktives preset:
     private var activePresetLabel: String? {
         guard let preset = activeDevicePreset else { return nil }
         return "Preset aktiv: \(preset.name)"
@@ -143,6 +146,7 @@ struct DeviceDetailView: View {
         NetheraStorage.groupBlocklist(for: device.group)
     }
 
+    // je nach dem ob eigene blocklist, device oder group nehmen:
     private var effectiveBlocklist: BlocklistProfile {
         _ = refreshGroupBlocklistToken
         return hasOwnBlocklist ? deviceBlocklist : groupBlocklist
@@ -152,6 +156,7 @@ struct DeviceDetailView: View {
         presets.first { isActivePreset($0) }
     }
 
+    // aktuelle settings:
     private var currentSettings: DeviceSettings {
         DeviceSettings(
             parentalControl: parentalControl,
@@ -387,6 +392,7 @@ struct DeviceDetailView: View {
         .background(cardBackground)
     }
 
+    // preset-sheet
     private var presetsPage: some View {
         NavigationStack {
             ZStack {
@@ -611,6 +617,7 @@ struct DeviceDetailView: View {
             )
     }
 
+    // speichern und loaden:
     private func loadSettings() {
         let settings = NetheraStorage.deviceSettings(for: device.id)
         parentalControl = settings.parentalControl

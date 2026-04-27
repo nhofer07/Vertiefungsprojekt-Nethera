@@ -249,3 +249,5 @@ struct BlocklistEditorSheet: View {
         newDomain = ""
     }
 }
+
+

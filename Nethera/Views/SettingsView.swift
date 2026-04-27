@@ -114,6 +114,7 @@ struct SettingsView: View {
         }
     }
     
+    // save funktion:
     func saveSettings() {
         UserDefaults.standard.set(wifiName, forKey: "router.wifiName")
         UserDefaults.standard.set(password, forKey: "router.password")
@@ -133,6 +134,7 @@ struct SettingsView: View {
 
         showSavedMessage = true
 
+        // debug:
         print("Einstellungen gespeichert:")
         print("WLAN-Name: \(wifiName)")
         print("Passwort: \(password)")

@@ -10,14 +10,18 @@ import Foundation
 import SwiftUI
 
 struct AdBlockDashboardView: View {
+    // dummydaten:
     @State private var blockedDomains = [
         BlockedDomain(name: "googleads.g.doubleclick.net", time: "2m"),
         BlockedDomain(name: "connect.facebook.com", time: "4m"),
         BlockedDomain(name: "stats.g.doubleclick.net", time: "17m"),
         BlockedDomain(name: "adservice.google.com", time: "29m")
     ]
+    
     @State private var newBlockedDomain = ""
 
+    
+    // neue domain holen:
     private func addBlockedDomain() {
         let sanitized = newBlockedDomain
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -91,6 +95,7 @@ struct AdBlockDashboardView: View {
                     .foregroundColor(.white)
             }
             
+            // alle domains zeigen:
             VStack(spacing: 12) {
                 ForEach(blockedDomains) { domain in
                     DomainRow(name: domain.name, time: domain.time)
@@ -103,6 +108,7 @@ struct AdBlockDashboardView: View {
                     .foregroundColor(.white.opacity(0.8))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
+                // textfeld mit newBlockedDomain als "class":
                 TextField(
                     "",
                     text: $newBlockedDomain,

@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ParentalControlView: View {
 
+    // dummydaten:
     @State private var devices = [
         Device(id: UUID(), name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Kinder"),
         Device(id: UUID(), name: "iPad Wohnzimmer", type: "ipad", onlineTime: "4h", dataUsage: "10 GB", group: "Wohnzimmer"),

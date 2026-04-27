@@ -23,6 +23,7 @@ struct BlacklistDashboardView: View {
     @State private var gamblingEnabled = true
     @State private var adultEnabled = true
     @State private var socialEnabled = true
+    // dummydaten:
     @State private var manualDomains = [
         "win2day.at",
         "htl-leonding.at",
@@ -31,6 +32,7 @@ struct BlacklistDashboardView: View {
     ]
     @State private var newBlockedDomain = ""
 
+    // gleich wie bei block ads:
     private func addManualDomain() {
         let sanitized = newBlockedDomain
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -102,6 +104,7 @@ struct BlacklistDashboardView: View {
             }
             .buttonStyle(.plain)
 
+            // einzelne pakete:
             if showBlacklistDetails {
                 VStack(spacing: 12) {
                     ExpandableBlacklistRow(
@@ -155,6 +158,7 @@ struct BlacklistDashboardView: View {
         .cornerRadius(28)
     }
 
+    // alle anzeigen:
     private var manualDomainList: some View {
         VStack(alignment: .leading, spacing: 10) {
             ForEach(manualDomains, id: \.self) { domain in
@@ -163,6 +167,7 @@ struct BlacklistDashboardView: View {
         }
     }
 
+    // neue rein:
     private var manualDomainEntry: some View {
         VStack(spacing: 10) {
             Text("Gib eine Domain ein, z. B. example.com (ohne https://).")
@@ -176,6 +181,7 @@ struct BlacklistDashboardView: View {
         .buttonStyle(.plain)
     }
 
+    // textfeld mit der "class":
     private var domainTextField: some View {
         TextField(
             "",
@@ -278,6 +284,7 @@ struct BlacklistDashboardView: View {
         }
     }
 
+    // ausklappbares:
     struct ExpandableBlacklistRow: View {
         let title: String
         let domains: String

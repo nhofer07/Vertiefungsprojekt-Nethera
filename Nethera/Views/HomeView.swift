@@ -251,6 +251,7 @@ struct HomeView: View {
         .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 6)
     }
 
+    // card style für jede gruppe:
     private var heroBackground: some View {
         RoundedRectangle(cornerRadius: 26, style: .continuous)
             .fill(

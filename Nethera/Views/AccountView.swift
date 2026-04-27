@@ -9,6 +9,8 @@ import SwiftUI
 
 struct AccountView: View {
     
+    // unsere Muster-Variablen + neuen gespeicherten:
+    
     // MARK: Editable State
     @State private var name = "Max Mustermann"
     @State private var email = "max@nethera.com"
@@ -21,12 +23,18 @@ struct AccountView: View {
     @State private var savedPassword = "••••••••"
     @State private var showSavedMessage = false
 
+    
+    
+    // unsaved check:
+    
     private var hasUnsavedChanges: Bool {
         name != savedName ||
         email != savedEmail ||
         phone != savedPhone ||
         password != savedPassword
     }
+    
+    
     
     var body: some View {
         NavigationStack {
@@ -44,6 +52,7 @@ struct AccountView: View {
                             Button {
                                 saveAccountSettings()
                             } label: {
+                                // check ob man speichern muss:
                                 Image(systemName: hasUnsavedChanges ? "checkmark.circle.fill" : "checkmark.circle")
                                     .font(.title2.weight(.bold))
                                     .foregroundColor(hasUnsavedChanges ? Color(red: 0.35, green: 0.75, blue: 0.9) : .white.opacity(0.45))
@@ -60,6 +69,8 @@ struct AccountView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                         }
+                        
+                        // alle Felder, die man so sieht:
                         
                         VStack(spacing: 20) {
                             // MARK: Profil
@@ -99,6 +110,9 @@ struct AccountView: View {
         }
     }
 
+    
+    // saven:
+    
     private func saveAccountSettings() {
         UserDefaults.standard.set(name, forKey: "account.name")
         UserDefaults.standard.set(email, forKey: "account.email")
@@ -117,6 +131,7 @@ struct AccountView: View {
         }
     }
 
+    // neuen anzeigen beim nächsten mal:
     private func loadAccountSettings() {
         name = UserDefaults.standard.string(forKey: "account.name") ?? name
         email = UserDefaults.standard.string(forKey: "account.email") ?? email
