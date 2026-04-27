@@ -334,7 +334,7 @@ struct DevicesView: View {
                 .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    PageHeaderView(title: "", showBackButton: true)
+                    
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 10) {

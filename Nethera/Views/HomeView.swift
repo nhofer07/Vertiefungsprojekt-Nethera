@@ -16,7 +16,6 @@ struct HomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        PageHeaderView(title: "Start")
 
                         VStack(alignment: .leading, spacing: 18) {
                             heroCard

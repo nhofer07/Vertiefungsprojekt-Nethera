@@ -23,7 +23,7 @@ struct SettingsChoiceView: View {
                 .ignoresSafeArea()
                 
                 VStack(spacing: 14) {
-                    PageHeaderView(title: "Einstellungen")
+                  
 
                     GeometryReader { geometry in
                         let spacing: CGFloat = 14
