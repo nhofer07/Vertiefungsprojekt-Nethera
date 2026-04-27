@@ -16,6 +16,7 @@ struct HomeView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
+                        PageHeaderView(title: "Start")
 
                         VStack(alignment: .leading, spacing: 18) {
                             heroCard
@@ -144,6 +145,8 @@ struct HomeView: View {
                 compactMetric(value: "85,7", label: "Mb/s")
                 compactMetric(value: "3", label: "Geräte")
                 compactMetric(value: "138", label: "Blockiert")
+                compactMetric(value: "5", label: "Geräte")
+                compactMetric(value: "138", label: "Blocks")
             }
         }
         .padding(18)

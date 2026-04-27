@@ -108,17 +108,7 @@ private struct GroupEditorSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
-                            .foregroundColor(.white)
-                    }
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        confirm()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.headline.weight(.bold))
+                        Label("Zurück", systemImage: "chevron.left")
                             .foregroundColor(.white)
                     }
                 }
@@ -160,6 +150,8 @@ struct DevicesView: View {
     @State private var targetedDropGroup: String?
 
     @State private var groupBlocklistTarget: GroupBlocklistTarget?
+    @State private var showMoveInfoBanner = true
+    @State private var refreshGroupsToken = UUID()
 
     private struct GroupBlocklistTarget: Identifiable {
         let id = UUID()
@@ -305,6 +297,25 @@ struct DevicesView: View {
         NetheraStorage.deviceSettings(for: device.id)
     }
 
+    private func activePreset(for device: Device) -> DevicePreset? {
+        let settings = deviceSettings(for: device)
+
+        guard settings.hasOwnBlocklist else { return nil }
+
+        return NetheraStorage.loadPresets().first { preset in
+            preset.parentalControl == settings.parentalControl &&
+            preset.prioritized == settings.prioritized &&
+            preset.timeLimitEnabled == settings.timeLimitEnabled &&
+            preset.blocklist == settings.blocklist &&
+            (!preset.timeLimitEnabled || (
+                Calendar.current.component(.hour, from: preset.startTime) == Calendar.current.component(.hour, from: settings.startTime) &&
+                Calendar.current.component(.minute, from: preset.startTime) == Calendar.current.component(.minute, from: settings.startTime) &&
+                Calendar.current.component(.hour, from: preset.endTime) == Calendar.current.component(.hour, from: settings.endTime) &&
+                Calendar.current.component(.minute, from: preset.endTime) == Calendar.current.component(.minute, from: settings.endTime)
+            ))
+        }
+    }
+
     private func blocklistProfile(for group: String) -> BlocklistProfile {
         NetheraStorage.groupBlocklist(for: group)
     }
@@ -323,28 +334,43 @@ struct DevicesView: View {
                 .ignoresSafeArea()
 
                 VStack(spacing: 0) {
-                    PageHeaderView(title: "Geräte", showBackButton: true) {
-                        Button {
-                            openCreateGroupSheet()
-                        } label: {
-                            Image(systemName: "folder.badge.plus")
-                                .foregroundColor(.white)
-                                .font(.title3)
-                        }
-                    }
+                    PageHeaderView(title: "", showBackButton: true)
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 10) {
-                            infoBanner
+                            if showMoveInfoBanner {
+                                infoBanner
+                            }
 
                             LazyVStack(spacing: 14) {
                                 ForEach(groups, id: \.self) { group in
                                     groupSection(for: group)
                                 }
                             }
+                            .id(refreshGroupsToken)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
+                    }
+                }
+
+                VStack {
+                    Spacer()
+                    HStack {
+                        Spacer()
+                        Button {
+                            openCreateGroupSheet()
+                        } label: {
+                            Image(systemName: "folder.badge.plus")
+                                .font(.title2.weight(.semibold))
+                                .foregroundColor(.black)
+                                .frame(width: 56, height: 56)
+                                .background(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.86))
+                                .clipShape(Circle())
+                                .shadow(color: .black.opacity(0.28), radius: 12, x: 0, y: 6)
+                        }
+                        .padding(.trailing, 20)
+                        .padding(.bottom, 24)
                     }
                 }
             }
@@ -353,6 +379,9 @@ struct DevicesView: View {
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
             ensureFallbackGroupExists()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .groupBlocklistDidChange)) { _ in
+            refreshGroupsToken = UUID()
         }
         .sheet(isPresented: $showGroupSheet) {
             GroupEditorSheet(
@@ -370,6 +399,7 @@ struct DevicesView: View {
                 initialProfile: blocklistProfile(for: target.group)
             ) { profile in
                 NetheraStorage.saveGroupBlocklist(profile, for: target.group)
+                refreshGroupsToken = UUID()
             }
         }
         .alert("Gruppe entfernen", isPresented: $showDeleteGroup, presenting: groupToDelete) { group in
@@ -390,16 +420,26 @@ struct DevicesView: View {
                 .padding(.top, 2)
 
             VStack(alignment: .leading, spacing: 4) {
-                Text("Geräte verschieben")
-                    .font(.headline)
-                    .foregroundColor(.white)
-
                 Text("Halte ein Gerät links am Griff und ziehe es direkt in eine andere Gruppe.")
                     .font(.footnote)
                     .foregroundColor(.white.opacity(0.72))
             }
 
             Spacer()
+
+            Button {
+                withAnimation(.easeInOut(duration: 0.18)) {
+                    showMoveInfoBanner = false
+                }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(.white.opacity(0.86))
+                    .frame(width: 28, height: 28)
+                    .background(Color.white.opacity(0.12))
+                    .clipShape(Circle())
+            }
+            .buttonStyle(.plain)
         }
         .padding(14)
         .background(
@@ -557,7 +597,7 @@ struct DevicesView: View {
     }
 
     private func deviceRow(at index: Int) -> some View {
-        let settings = deviceSettings(for: devices[index])
+        let activePreset = activePreset(for: devices[index])
 
         return NavigationLink(destination: DeviceDetailView(device: $devices[index], groups: groups)) {
             HStack(spacing: 12) {
@@ -578,19 +618,9 @@ struct DevicesView: View {
                         .foregroundColor(.white)
                         .font(.body.weight(.medium))
 
-                    Text("Online • \(devices[index].onlineTime)")
-                        .font(.subheadline)
-                        .foregroundColor(.white.opacity(0.7))
-
-                    HStack(spacing: 8) {
-                        if settings.prioritized {
-                            infoChip(label: "Priorisiert", icon: "bolt.fill", tint: .yellow)
-                        }
-
-                        if settings.blocklist.hasActiveRules {
-                            infoChip(label: "Eigene Blocklist", icon: "shield", tint: .cyan)
-                        }
-                    }
+                    Text(activePreset == nil ? "Kein Preset aktiv" : "Preset: \(activePreset!.name)")
+                        .font(.subheadline.weight(.medium))
+                        .foregroundColor(.cyan.opacity(0.9))
                 }
 
                 Spacer()
@@ -613,10 +643,10 @@ struct DevicesView: View {
             Text(label)
         }
         .font(.caption2.weight(.semibold))
-        .foregroundColor(tint)
+        .foregroundColor(tint.opacity(0.78))
         .padding(.horizontal, 8)
         .padding(.vertical, 4)
-        .background(tint.opacity(0.12))
+        .background(tint.opacity(0.08))
         .clipShape(Capsule())
     }
 }

@@ -99,17 +99,7 @@ private struct PresetEditorSheet: View {
                     Button {
                         dismiss()
                     } label: {
-                        Image(systemName: "xmark")
-                            .foregroundColor(.white)
-                    }
-                }
-
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        confirm()
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.headline.weight(.bold))
+                        Label("Zurück", systemImage: "chevron.left")
                             .foregroundColor(.white)
                     }
                 }
@@ -136,12 +126,31 @@ struct DeviceDetailView: View {
     @State private var startTime = Date()
     @State private var endTime = Date()
     @State private var deviceBlocklist = BlocklistProfile()
+    @State private var hasOwnBlocklist = false
 
-    @State private var showPresetSheet = false
     @State private var showCreatePresetSheet = false
     @State private var presetToEdit: DevicePreset?
     @State private var presets: [DevicePreset] = []
     @State private var showBlocklistSheet = false
+    @State private var refreshGroupBlocklistToken = UUID()
+
+    private var activePresetLabel: String? {
+        guard let preset = activeDevicePreset else { return nil }
+        return "Preset aktiv: \(preset.name)"
+    }
+
+    private var groupBlocklist: BlocklistProfile {
+        NetheraStorage.groupBlocklist(for: device.group)
+    }
+
+    private var effectiveBlocklist: BlocklistProfile {
+        _ = refreshGroupBlocklistToken
+        return hasOwnBlocklist ? deviceBlocklist : groupBlocklist
+    }
+
+    private var activeDevicePreset: DevicePreset? {
+        presets.first { isActivePreset($0) }
+    }
 
     private var currentSettings: DeviceSettings {
         DeviceSettings(
@@ -150,7 +159,8 @@ struct DeviceDetailView: View {
             timeLimitEnabled: timeLimitEnabled,
             startTime: startTime,
             endTime: endTime,
-            blocklist: deviceBlocklist
+            blocklist: deviceBlocklist,
+            hasOwnBlocklist: hasOwnBlocklist
         )
     }
 
@@ -191,12 +201,16 @@ struct DeviceDetailView: View {
         .onChange(of: timeLimitEnabled) { persistSettings() }
         .onChange(of: startTime) { persistSettings() }
         .onChange(of: endTime) { persistSettings() }
+        .onReceive(NotificationCenter.default.publisher(for: .groupBlocklistDidChange)) { _ in
+            refreshGroupBlocklistToken = UUID()
+        }
         .toolbar {
             ToolbarItem(placement: .navigationBarTrailing) {
                 Button {
                     refreshPresets()
                     showPresetSheet = true
                 } label: {
+                NavigationLink(destination: presetsPage.onAppear { refreshPresets() }) {
                     Image(systemName: "slider.horizontal.3")
                         .font(.title2)
                         .foregroundColor(.white)
@@ -206,15 +220,18 @@ struct DeviceDetailView: View {
         }
         .sheet(isPresented: $showPresetSheet) {
             presetsSheet
+
         }
         .sheet(isPresented: $showBlocklistSheet) {
             BlocklistEditorSheet(
                 title: "Geräte-Blocklist",
                 subtitle: device.name,
-                initialProfile: deviceBlocklist
+                initialProfile: effectiveBlocklist
             ) { profile in
                 deviceBlocklist = profile
+                hasOwnBlocklist = true
                 persistSettings()
+                refreshGroupBlocklistToken = UUID()
             }
         }
     }
@@ -231,13 +248,23 @@ struct DeviceDetailView: View {
                 .foregroundColor(.white)
                 .multilineTextAlignment(.center)
 
-            Text(device.group)
-                .font(.subheadline.weight(.medium))
-                .foregroundColor(.white.opacity(0.72))
-                .padding(.horizontal, 12)
-                .padding(.vertical, 8)
-                .background(Color.white.opacity(0.08))
-                .clipShape(Capsule())
+            HStack(spacing: 8) {
+                Text(device.group)
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.white.opacity(0.72))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Capsule())
+
+                Text(activeDevicePreset?.name ?? "Kein Preset")
+                    .font(.subheadline.weight(.medium))
+                    .foregroundColor(.white.opacity(0.82))
+                    .padding(.horizontal, 12)
+                    .padding(.vertical, 8)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Capsule())
+            }
         }
         .frame(maxWidth: .infinity)
         .padding()
@@ -300,11 +327,11 @@ struct DeviceDetailView: View {
             cardTitle("Blocklist", icon: "shield.lefthalf.filled")
 
             VStack(alignment: .leading, spacing: 8) {
-                Text(deviceBlocklist.hasActiveRules ? deviceBlocklist.summaryText : "Keine individuellen Regeln aktiv")
+                Text(effectiveBlocklist.hasActiveRules ? effectiveBlocklist.summaryText : "Keine Regeln aktiv")
                     .font(.headline)
                     .foregroundColor(.white)
 
-                Text("Du kannst empfohlene Listen aktivieren oder eigene Domains nur für dieses Gerät blockieren.")
+                Text(hasOwnBlocklist ? "Individuelle Abweichung nur für dieses Gerät." : "Kommt live von der Gruppe. Bearbeiten erstellt nur für dieses Gerät eine Abweichung.")
                     .font(.footnote)
                     .foregroundColor(.white.opacity(0.7))
             }
@@ -332,7 +359,7 @@ struct DeviceDetailView: View {
 
     private var presetsHintCard: some View {
         HStack(alignment: .top, spacing: 12) {
-            Image(systemName: "square.stack.3d.up")
+            Image(systemName: "slider.horizontal.3")
                 .foregroundColor(.cyan)
                 .padding(.top, 2)
 
@@ -341,7 +368,7 @@ struct DeviceDetailView: View {
                     .font(.headline)
                     .foregroundColor(.white)
 
-                Text("Speichere komplette Geräteeinstellungen inklusive Blocklist und wende sie später mit einem Tap an.")
+                Text("Speichere komplette Geräteeinstellungen inklusive eigener Blocklist und wende sie später mit einem Tap an.")
                     .font(.footnote)
                     .foregroundColor(.white.opacity(0.72))
             }
@@ -352,7 +379,7 @@ struct DeviceDetailView: View {
         .background(cardBackground)
     }
 
-    private var presetsSheet: some View {
+    private var presetsPage: some View {
         NavigationStack {
             ZStack {
                 LinearGradient(
@@ -367,16 +394,6 @@ struct DeviceDetailView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 18) {
-                        VStack(spacing: 8) {
-                            Text("Presets")
-                                .font(.largeTitle.bold())
-                                .foregroundColor(.white)
-
-                            Text("Schnell speichern, bearbeiten und wieder anwenden.")
-                                .font(.subheadline)
-                                .foregroundColor(.white.opacity(0.72))
-                        }
-
                         VStack(spacing: 12) {
                             Button {
                                 showCreatePresetSheet = true
@@ -401,13 +418,9 @@ struct DeviceDetailView: View {
                         }
 
                         VStack(alignment: .leading, spacing: 14) {
-                            Text("Gespeicherte Presets")
-                                .font(.headline)
-                                .foregroundColor(.white)
-
                             if presets.isEmpty {
                                 VStack(spacing: 10) {
-                                    Image(systemName: "square.stack.3d.up.slash")
+                                    Image(systemName: "slider.horizontal.3")
                                         .font(.title2)
                                         .foregroundColor(.white.opacity(0.55))
 
@@ -428,25 +441,13 @@ struct DeviceDetailView: View {
                     .padding()
                 }
             }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button {
-                        showPresetSheet = false
-                    } label: {
-                        Image(systemName: "checkmark")
-                            .font(.headline.weight(.bold))
-                            .foregroundColor(.white)
-                    }
-                }
-            }
         }
-        .presentationDragIndicator(.visible)
         .sheet(isPresented: $showCreatePresetSheet) {
             PresetEditorSheet(
                 title: "Neues Preset",
                 confirmLabel: "Preset speichern",
                 initialName: "",
-                subtitle: "Speichert die aktuellen Einstellungen inklusive Blocklist."
+                subtitle: "Speichert die aktuellen Einstellungen inklusive eigener Blocklist."
             ) { name in
                 saveCurrentAsPreset(named: name)
             }
@@ -464,16 +465,29 @@ struct DeviceDetailView: View {
     }
 
     private func presetRow(_ preset: DevicePreset) -> some View {
-        HStack(alignment: .top, spacing: 14) {
+        let isActive = isActivePreset(preset)
+
+        return HStack(alignment: .top, spacing: 14) {
             Button {
                 applyPreset(preset)
-                showPresetSheet = false
             } label: {
                 VStack(alignment: .leading, spacing: 8) {
-                    Text(preset.name)
-                        .font(.headline)
-                        .foregroundColor(.white)
-                        .multilineTextAlignment(.leading)
+                    HStack(spacing: 8) {
+                        Text(preset.name)
+                            .font(.headline)
+                            .foregroundColor(.white)
+                            .multilineTextAlignment(.leading)
+
+                        if isActive {
+                            Text("Aktiv")
+                                .font(.caption2.weight(.bold))
+                                .foregroundColor(.white.opacity(0.9))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(Color.white.opacity(0.14))
+                                .clipShape(Capsule())
+                        }
+                    }
 
                     HStack(spacing: 8) {
                         presetTag(title: preset.parentalControl ? "Kindersicherung an" : "Kindersicherung aus", tint: .cyan)
@@ -516,6 +530,10 @@ struct DeviceDetailView: View {
         }
         .padding()
         .background(cardBackground)
+        .overlay(
+            RoundedRectangle(cornerRadius: 22)
+                .stroke(isActive ? Color.white.opacity(0.28) : Color.clear, lineWidth: 1.5)
+        )
     }
 
     private func settingsToggle(title: String, subtitle: String, isOn: Binding<Bool>) -> some View {
@@ -555,11 +573,25 @@ struct DeviceDetailView: View {
     private func presetTag(title: String, tint: Color) -> some View {
         Text(title)
             .font(.caption2.weight(.semibold))
-            .foregroundColor(tint)
+            .foregroundColor(.white.opacity(0.70))
             .padding(.horizontal, 8)
             .padding(.vertical, 5)
-            .background(tint.opacity(0.13))
+            .background(Color.white.opacity(0.07))
             .clipShape(Capsule())
+    }
+
+    private func isActivePreset(_ preset: DevicePreset) -> Bool {
+        preset.parentalControl == parentalControl &&
+        preset.prioritized == prioritized &&
+        preset.timeLimitEnabled == timeLimitEnabled &&
+        hasOwnBlocklist &&
+        preset.blocklist == deviceBlocklist &&
+        (!preset.timeLimitEnabled || (
+            Calendar.current.component(.hour, from: preset.startTime) == Calendar.current.component(.hour, from: startTime) &&
+            Calendar.current.component(.minute, from: preset.startTime) == Calendar.current.component(.minute, from: startTime) &&
+            Calendar.current.component(.hour, from: preset.endTime) == Calendar.current.component(.hour, from: endTime) &&
+            Calendar.current.component(.minute, from: preset.endTime) == Calendar.current.component(.minute, from: endTime)
+        ))
     }
 
     private var cardBackground: some View {
@@ -579,6 +611,7 @@ struct DeviceDetailView: View {
         startTime = settings.startTime
         endTime = settings.endTime
         deviceBlocklist = settings.blocklist
+        hasOwnBlocklist = settings.hasOwnBlocklist
     }
 
     private func persistSettings() {
@@ -594,13 +627,13 @@ struct DeviceDetailView: View {
         existing.insert(
             DevicePreset(
                 name: name,
-                group: device.group,
+                group: nil,
                 parentalControl: parentalControl,
                 prioritized: prioritized,
                 timeLimitEnabled: timeLimitEnabled,
                 startTime: startTime,
                 endTime: endTime,
-                blocklist: deviceBlocklist
+                blocklist: effectiveBlocklist
             ),
             at: 0
         )
@@ -613,25 +646,36 @@ struct DeviceDetailView: View {
         guard let index = existing.firstIndex(where: { $0.id == preset.id }) else { return }
 
         existing[index].name = newName
-        existing[index].group = device.group
+        existing[index].group = nil
         existing[index].parentalControl = parentalControl
         existing[index].prioritized = prioritized
         existing[index].timeLimitEnabled = timeLimitEnabled
         existing[index].startTime = startTime
         existing[index].endTime = endTime
-        existing[index].blocklist = deviceBlocklist
+        existing[index].blocklist = effectiveBlocklist
 
         NetheraStorage.savePresets(existing)
         presets = existing
     }
 
     private func applyPreset(_ preset: DevicePreset) {
-        parentalControl = preset.parentalControl
-        prioritized = preset.prioritized
-        timeLimitEnabled = preset.timeLimitEnabled
-        startTime = preset.startTime
-        endTime = preset.endTime
-        deviceBlocklist = preset.blocklist
+        if isActivePreset(preset) {
+            parentalControl = true
+            prioritized = false
+            timeLimitEnabled = false
+            startTime = Date()
+            endTime = Date()
+            deviceBlocklist = BlocklistProfile()
+            hasOwnBlocklist = false
+        } else {
+            parentalControl = preset.parentalControl
+            prioritized = preset.prioritized
+            timeLimitEnabled = preset.timeLimitEnabled
+            startTime = preset.startTime
+            endTime = preset.endTime
+            deviceBlocklist = preset.blocklist
+            hasOwnBlocklist = true
+        }
         persistSettings()
     }
 

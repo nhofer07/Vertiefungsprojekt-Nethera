@@ -1,5 +1,9 @@
 import Foundation
 
+extension Notification.Name {
+    static let groupBlocklistDidChange = Notification.Name("groupBlocklistDidChange")
+}
+
 struct BlocklistProfile: Codable, Equatable {
     var gamblingEnabled: Bool
     var adultEnabled: Bool
@@ -68,6 +72,7 @@ struct DeviceSettings: Codable, Equatable {
     var startTime: Date
     var endTime: Date
     var blocklist: BlocklistProfile
+    var hasOwnBlocklist: Bool
 
     init(
         parentalControl: Bool = true,
@@ -75,7 +80,8 @@ struct DeviceSettings: Codable, Equatable {
         timeLimitEnabled: Bool = false,
         startTime: Date = Date(),
         endTime: Date = Date(),
-        blocklist: BlocklistProfile = BlocklistProfile()
+        blocklist: BlocklistProfile = BlocklistProfile(),
+        hasOwnBlocklist: Bool = false
     ) {
         self.parentalControl = parentalControl
         self.prioritized = prioritized
@@ -83,10 +89,11 @@ struct DeviceSettings: Codable, Equatable {
         self.startTime = startTime
         self.endTime = endTime
         self.blocklist = blocklist
+        self.hasOwnBlocklist = hasOwnBlocklist
     }
 
     private enum CodingKeys: String, CodingKey {
-        case parentalControl, prioritized, timeLimitEnabled, startTime, endTime, blocklist
+        case parentalControl, prioritized, timeLimitEnabled, startTime, endTime, blocklist, hasOwnBlocklist
     }
 
     init(from decoder: Decoder) throws {
@@ -97,6 +104,7 @@ struct DeviceSettings: Codable, Equatable {
         startTime = try container.decodeIfPresent(Date.self, forKey: .startTime) ?? Date()
         endTime = try container.decodeIfPresent(Date.self, forKey: .endTime) ?? Date()
         blocklist = try container.decodeIfPresent(BlocklistProfile.self, forKey: .blocklist) ?? BlocklistProfile()
+        hasOwnBlocklist = try container.decodeIfPresent(Bool.self, forKey: .hasOwnBlocklist) ?? blocklist.hasActiveRules
     }
 }
 
@@ -210,6 +218,7 @@ enum NetheraStorage {
             all.removeValue(forKey: group)
         }
         saveEncodable(all, forKey: groupBlocklistsKey)
+        NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 
     static func renameGroupBlocklist(from oldGroup: String, to newGroup: String) {
@@ -220,11 +229,13 @@ enum NetheraStorage {
             all[newGroup] = value
         }
         saveEncodable(all, forKey: groupBlocklistsKey)
+        NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 
     static func deleteGroupBlocklist(for group: String) {
         var all = allGroupBlocklists()
         all.removeValue(forKey: group)
         saveEncodable(all, forKey: groupBlocklistsKey)
+        NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 }
