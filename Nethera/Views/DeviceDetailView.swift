@@ -246,21 +246,8 @@ struct DeviceDetailView: View {
                 .multilineTextAlignment(.center)
 
             HStack(spacing: 8) {
-                Text(device.group)
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(.white.opacity(0.72))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.08))
-                    .clipShape(Capsule())
-
-                Text(activeDevicePreset?.name ?? "Kein Preset")
-                    .font(.subheadline.weight(.medium))
-                    .foregroundColor(.white.opacity(0.82))
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 8)
-                    .background(Color.white.opacity(0.08))
-                    .clipShape(Capsule())
+                labeledHeaderChip(label: "Gruppe", value: device.group, tint: .white.opacity(0.72))
+                labeledHeaderChip(label: "Preset", value: activeDevicePreset?.name ?? "Kein Preset", tint: .cyan.opacity(0.92))
             }
         }
         .frame(maxWidth: .infinity)
@@ -268,10 +255,27 @@ struct DeviceDetailView: View {
         .background(cardBackground)
     }
 
+    private func labeledHeaderChip(label: String, value: String, tint: Color) -> some View {
+        HStack(spacing: 6) {
+            Text(label)
+                .font(.caption2.weight(.semibold))
+                .foregroundColor(.white.opacity(0.50))
+            Text(value)
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(tint)
+                .lineLimit(1)
+                .minimumScaleFactor(0.82)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color.white.opacity(0.08))
+        .clipShape(Capsule())
+    }
+
     private var statsGrid: some View {
         HStack(spacing: 14) {
-            InfoCard(title: device.onlineTime, subtitle: "Online")
-            InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch")
+            InfoCard(title: device.onlineTime, subtitle: "Internetnutzung heute")
+            InfoCard(title: device.dataUsage, subtitle: "Datenverbrauch diese Woche")
         }
     }
 
@@ -495,15 +499,16 @@ struct DeviceDetailView: View {
                         if isActive {
                             Text("Aktiv")
                                 .font(.caption2.weight(.bold))
-                                .foregroundColor(.white.opacity(0.9))
+                                .foregroundColor(.cyan.opacity(0.95))
                                 .padding(.horizontal, 8)
                                 .padding(.vertical, 4)
-                                .background(Color.white.opacity(0.14))
+                                .background(Color.cyan.opacity(0.12))
                                 .clipShape(Capsule())
                         }
                     }
 
                     HStack(spacing: 8) {
+                        presetTag(title: isActive ? "Ein" : "Aus", tint: isActive ? .green : .gray)
                         presetTag(title: preset.parentalControl ? "Kindersicherung an" : "Kindersicherung aus", tint: .cyan)
 
                         if preset.prioritized {
@@ -526,6 +531,13 @@ struct DeviceDetailView: View {
             .buttonStyle(.plain)
 
             VStack(spacing: 12) {
+                Toggle("", isOn: Binding(
+                    get: { presets.first(where: { $0.id == preset.id })?.isEnabled ?? false },
+                    set: { togglePreset(preset, enabled: $0) }
+                ))
+                .toggleStyle(SwitchToggleStyle(tint: .cyan))
+                .labelsHidden()
+
                 Button {
                     presetToEdit = preset
                 } label: {
@@ -546,7 +558,7 @@ struct DeviceDetailView: View {
         .background(cardBackground)
         .overlay(
             RoundedRectangle(cornerRadius: 22)
-                .stroke(isActive ? Color.white.opacity(0.28) : Color.clear, lineWidth: 1.5)
+                .stroke(isActive ? Color.cyan.opacity(0.75) : Color.clear, lineWidth: 1.6)
         )
     }
 
@@ -595,17 +607,7 @@ struct DeviceDetailView: View {
     }
 
     private func isActivePreset(_ preset: DevicePreset) -> Bool {
-        preset.parentalControl == parentalControl &&
-        preset.prioritized == prioritized &&
-        preset.timeLimitEnabled == timeLimitEnabled &&
-        hasOwnBlocklist &&
-        preset.blocklist == deviceBlocklist &&
-        (!preset.timeLimitEnabled || (
-            Calendar.current.component(.hour, from: preset.startTime) == Calendar.current.component(.hour, from: startTime) &&
-            Calendar.current.component(.minute, from: preset.startTime) == Calendar.current.component(.minute, from: startTime) &&
-            Calendar.current.component(.hour, from: preset.endTime) == Calendar.current.component(.hour, from: endTime) &&
-            Calendar.current.component(.minute, from: preset.endTime) == Calendar.current.component(.minute, from: endTime)
-        ))
+        presets.first(where: { $0.id == preset.id })?.isEnabled ?? preset.isEnabled
     }
 
     private var cardBackground: some View {
@@ -634,24 +636,31 @@ struct DeviceDetailView: View {
     }
 
     private func refreshPresets() {
-        presets = NetheraStorage.loadPresets()
+        let cleaned = normalizedPresets(NetheraStorage.loadPresets())
+        NetheraStorage.savePresets(cleaned)
+        presets = cleaned
     }
 
     private func saveCurrentAsPreset(named name: String) {
-        var existing = NetheraStorage.loadPresets()
-        existing.insert(
-            DevicePreset(
-                name: name,
-                group: nil,
-                parentalControl: parentalControl,
-                prioritized: prioritized,
-                timeLimitEnabled: timeLimitEnabled,
-                startTime: startTime,
-                endTime: endTime,
-                blocklist: effectiveBlocklist
-            ),
-            at: 0
+        var existing = NetheraStorage.loadPresets().map { preset in
+            var copy = preset
+            copy.isEnabled = false
+            return copy
+        }
+
+        let newPreset = DevicePreset(
+            name: name,
+            isEnabled: true,
+            group: nil,
+            parentalControl: parentalControl,
+            prioritized: prioritized,
+            timeLimitEnabled: timeLimitEnabled,
+            startTime: startTime,
+            endTime: endTime,
+            blocklist: effectiveBlocklist
         )
+
+        existing.insert(newPreset, at: 0)
         NetheraStorage.savePresets(existing)
         presets = existing
     }
@@ -673,18 +682,55 @@ struct DeviceDetailView: View {
         presets = existing
     }
 
-    private func applyPreset(_ preset: DevicePreset) {
-        if isActivePreset(preset) {
+    private func togglePreset(_ preset: DevicePreset, enabled: Bool) {
+        if enabled {
+            activatePreset(preset)
+        } else if isActivePreset(preset) {
             resetToGroupBlocklist()
-        } else {
-            parentalControl = preset.parentalControl
-            prioritized = preset.prioritized
-            timeLimitEnabled = preset.timeLimitEnabled
-            startTime = preset.startTime
-            endTime = preset.endTime
-            deviceBlocklist = preset.blocklist
-            hasOwnBlocklist = true
-            persistSettings()
+            setOnlyPreset(preset, enabled: false)
+        }
+    }
+
+    private func applyPreset(_ preset: DevicePreset) {
+        activatePreset(preset)
+    }
+
+    private func activatePreset(_ preset: DevicePreset) {
+        parentalControl = preset.parentalControl
+        prioritized = preset.prioritized
+        timeLimitEnabled = preset.timeLimitEnabled
+        startTime = preset.startTime
+        endTime = preset.endTime
+        deviceBlocklist = preset.blocklist
+        hasOwnBlocklist = true
+        persistSettings()
+        setOnlyPreset(preset, enabled: true)
+    }
+
+    private func setOnlyPreset(_ preset: DevicePreset, enabled: Bool) {
+        var existing = NetheraStorage.loadPresets()
+        existing = existing.map { item in
+            var copy = item
+            copy.isEnabled = enabled && item.id == preset.id
+            return copy
+        }
+        existing = normalizedPresets(existing)
+        NetheraStorage.savePresets(existing)
+        presets = existing
+    }
+
+    private func normalizedPresets(_ input: [DevicePreset]) -> [DevicePreset] {
+        var didKeepActivePreset = false
+        return input.map { item in
+            var copy = item
+            if copy.isEnabled {
+                if didKeepActivePreset {
+                    copy.isEnabled = false
+                } else {
+                    didKeepActivePreset = true
+                }
+            }
+            return copy
         }
     }
 

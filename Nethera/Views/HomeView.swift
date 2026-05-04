@@ -124,7 +124,7 @@ struct HomeView: View {
                         .font(.system(size: 32, weight: .bold, design: .rounded))
                         .foregroundColor(.white)
 
-                    Text("Dein Netzwerk auf einen ruhigen Blick reduziert.")
+                    Text("Dein Netzwerk auf einen Blick.")
                         .font(.subheadline)
                         .foregroundColor(.white.opacity(0.72))
                         .fixedSize(horizontal: false, vertical: true)
@@ -140,14 +140,68 @@ struct HomeView: View {
                     .clipShape(Circle())
             }
 
-            HStack(spacing: 10) {
-                compactMetric(value: "85,7", label: "Mb/s")
-                compactMetric(value: "5", label: "Geräte")
-                compactMetric(value: "138", label: "Blocks")
+            VStack(spacing: 10) {
+                compactMetric(value: "5", label: "Geräte mit dem Netz verbunden", isPrimary: true)
+
+                HStack(spacing: 10) {
+                    compactMetric(value: "19h", label: "Internetnutzung \n diese Woche")
+                    compactMetric(value: "57 GB", label: "Datenverbrauch \n diese Woche")
+                }
             }
         }
         .padding(18)
         .background(heroBackground)
+    }
+
+
+    private var netheraStatusCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            HStack {
+                Label("Nethera-Übersicht", systemImage: "network.badge.shield.half.filled")
+                    .font(.headline.weight(.semibold))
+                    .foregroundColor(.white)
+
+                Spacer()
+
+                Text("Live")
+                    .font(.caption2.weight(.bold))
+                    .foregroundColor(.black)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                    .clipShape(Capsule())
+            }
+
+            VStack(spacing: 10) {
+                statusRow(title: "Neu / nicht zugeordnet", value: "1 Gerät", icon: "sparkles")
+                statusRow(title: "Aktive Presets", value: "Ein/Aus direkt am Preset", icon: "slider.horizontal.3")
+                statusRow(title: "Gruppenaktionen", value: "Swipe: Umbenennen, Blocklist, Löschen", icon: "hand.draw")
+            }
+        }
+        .padding(16)
+        .background(cardBackground)
+    }
+
+    private func statusRow(title: String, value: String, icon: String) -> some View {
+        HStack(spacing: 10) {
+            Image(systemName: icon)
+                .foregroundColor(.cyan)
+                .frame(width: 22)
+
+            Text(title)
+                .font(.footnote.weight(.semibold))
+                .foregroundColor(.white.opacity(0.86))
+
+            Spacer()
+
+            Text(value)
+                .font(.footnote)
+                .foregroundColor(.white.opacity(0.66))
+                .multilineTextAlignment(.trailing)
+        }
+        .padding(10)
+        .background(Color.white.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 
     private var infoCard: some View {
@@ -184,27 +238,39 @@ struct HomeView: View {
         }
     }
 
-    private func compactMetric(value: String, label: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
+    private func compactMetric(value: String, label: String, isPrimary: Bool = false) -> some View {
+        VStack(alignment: isPrimary ? .leading : .center, spacing: isPrimary ? 4 : 6) {
             Text(value)
-                .font(.headline.weight(.bold))
+                .font(.system(size: isPrimary ? 30 : 24, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.8)
 
             Text(label)
-                .font(.caption.weight(.medium))
-                .foregroundColor(.white.opacity(0.65))
+                .font(isPrimary ? .subheadline.weight(.semibold) : .caption.weight(.semibold))
+                .foregroundColor(.white.opacity(0.72))
+                .multilineTextAlignment(isPrimary ? .leading : .center)
+                .lineLimit(2)
+                .minimumScaleFactor(0.72)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.vertical, 12)
-        .padding(.horizontal, 14)
-        .background(Color.white.opacity(0.06))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: isPrimary ? 58 : 74, alignment: isPrimary ? .leading : .center)
+        .padding(.vertical, isPrimary ? 14 : 10)
+        .padding(.horizontal, isPrimary ? 16 : 10)
+        .background(
+            LinearGradient(
+                colors: [Color.white.opacity(isPrimary ? 0.10 : 0.07), Color.white.opacity(0.045)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 16, style: .continuous)
-                .stroke(Color.white.opacity(0.06), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .stroke(Color.white.opacity(0.07), lineWidth: 1)
         )
     }
-
+    
     private func shortcutCard(title: String, subtitle: String, symbol: String, tint: Color) -> some View {
         VStack(alignment: .leading, spacing: 14) {
             HStack {

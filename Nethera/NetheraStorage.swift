@@ -114,6 +114,7 @@ struct DeviceSettings: Codable, Equatable {
 struct DevicePreset: Codable, Identifiable, Equatable {
     let id: UUID
     var name: String
+    var isEnabled: Bool
     var group: String?
     var parentalControl: Bool
     var prioritized: Bool
@@ -125,6 +126,7 @@ struct DevicePreset: Codable, Identifiable, Equatable {
     init(
         id: UUID = UUID(),
         name: String,
+        isEnabled: Bool = true,
         group: String? = nil,
         parentalControl: Bool,
         prioritized: Bool,
@@ -135,6 +137,7 @@ struct DevicePreset: Codable, Identifiable, Equatable {
     ) {
         self.id = id
         self.name = name
+        self.isEnabled = isEnabled
         self.group = group
         self.parentalControl = parentalControl
         self.prioritized = prioritized
@@ -145,13 +148,14 @@ struct DevicePreset: Codable, Identifiable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case id, name, group, parentalControl, prioritized, timeLimitEnabled, startTime, endTime, blocklist
+        case id, name, isEnabled, group, parentalControl, prioritized, timeLimitEnabled, startTime, endTime, blocklist
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         id = try container.decodeIfPresent(UUID.self, forKey: .id) ?? UUID()
         name = try container.decode(String.self, forKey: .name)
+        isEnabled = try container.decodeIfPresent(Bool.self, forKey: .isEnabled) ?? true
         group = try container.decodeIfPresent(String.self, forKey: .group)
         parentalControl = try container.decodeIfPresent(Bool.self, forKey: .parentalControl) ?? true
         prioritized = try container.decodeIfPresent(Bool.self, forKey: .prioritized) ?? false

@@ -17,6 +17,7 @@ struct InfoCard: View {
                 .foregroundColor(.gray) // Subtitle bleibt grau
         }
         .frame(maxWidth: .infinity)
+        .multilineTextAlignment(.center) // 👈 DAS HIER hinzufügen
         .padding()
         .background(
             RoundedRectangle(cornerRadius: 16)
