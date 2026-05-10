@@ -211,7 +211,7 @@ struct DevicesView: View {
         }
     }
 
-    private static func normalizeGroupName(_ name: String) -> String {
+    nonisolated private static func normalizeGroupName(_ name: String) -> String {
         switch name {
         case "Gast", "Neu verbunden":
             return "Nicht zugeordnet"
@@ -557,9 +557,75 @@ struct DevicesView: View {
         let isDropTarget = targetedDropGroup == group
         let groupBlocklist = blocklistProfile(for: group)
         let canDelete = group != fallbackGroup
-        let isSwipedOpen = swipedGroup == group
 
-        ZStack(alignment: .trailing) {
+        VStack(alignment: .leading, spacing: 10) {
+            swipableGroupHeader(
+                for: group,
+                deviceCount: groupDevices.count,
+                isDropTarget: isDropTarget,
+                groupBlocklist: groupBlocklist,
+                canDelete: canDelete
+            )
+
+            if groupDevices.isEmpty {
+                emptyGroupState
+            } else {
+                ForEach(groupDevices) { device in
+                    if let index = devices.firstIndex(where: { $0.id == device.id }) {
+                        deviceRow(at: index)
+                    }
+                }
+            }
+        }
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(
+                    isDropTarget
+                    ? Color(red: 0.14, green: 0.22, blue: 0.28)
+                    : Color(red: 0.07, green: 0.11, blue: 0.16)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(
+                            isDropTarget
+                            ? Color.cyan.opacity(0.8)
+                            : Color.white.opacity(0.08),
+                            lineWidth: 1
+                        )
+                )
+        )
+        .contentShape(RoundedRectangle(cornerRadius: 18))
+        .onTapGesture {
+            if swipedGroup != nil {
+                swipedGroup = nil
+            }
+        }
+        .dropDestination(for: DeviceDragItem.self) { items, _ in
+            guard let draggedDevice = items.first else { return false }
+            moveDevice(withID: draggedDevice.id, to: group)
+            targetedDropGroup = nil
+            return true
+        } isTargeted: { isTargeted in
+            if isTargeted {
+                targetedDropGroup = group
+            } else if targetedDropGroup == group {
+                targetedDropGroup = nil
+            }
+        }
+    }
+
+    private func swipableGroupHeader(
+        for group: String,
+        deviceCount: Int,
+        isDropTarget: Bool,
+        groupBlocklist: BlocklistProfile,
+        canDelete: Bool
+    ) -> some View {
+        let isOpen = swipedGroup == group
+        let actionWidth: CGFloat = canDelete ? 276 : 184
+
+        return ZStack(alignment: .trailing) {
             HStack(spacing: 0) {
                 Button {
                     swipedGroup = nil
@@ -587,82 +653,39 @@ struct DevicesView: View {
                     .buttonStyle(.plain)
                 }
             }
-            .frame(width: canDelete ? 276 : 184)
-            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
+            .frame(width: actionWidth)
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
 
-            VStack(alignment: .leading, spacing: 10) {
-                groupHeader(
-                    for: group,
-                    deviceCount: groupDevices.count,
-                    isDropTarget: isDropTarget,
-                    groupBlocklist: groupBlocklist
-                )
-
-                if groupDevices.isEmpty {
-                    emptyGroupState
-                } else {
-                    ForEach(groupDevices) { device in
-                        if let index = devices.firstIndex(where: { $0.id == device.id }) {
-                            deviceRow(at: index)
-                        }
-                    }
-                }
-            }
-            .padding(14)
-            .background(
-                RoundedRectangle(cornerRadius: 18)
-                    .fill(
-                        isDropTarget
-                        ? Color(red: 0.14, green: 0.22, blue: 0.28)
-                        : Color(red: 0.07, green: 0.11, blue: 0.16)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 18)
-                            .stroke(
-                                isDropTarget
-                                ? Color.cyan.opacity(0.8)
-                                : Color.white.opacity(0.08),
-                                lineWidth: 1
-                            )
-                    )
+            groupHeader(
+                for: group,
+                deviceCount: deviceCount,
+                isDropTarget: isDropTarget,
+                groupBlocklist: groupBlocklist
             )
-            .contentShape(RoundedRectangle(cornerRadius: 18))
-            .offset(x: isSwipedOpen ? (canDelete ? -276 : -184) : 0)
+            .padding(12)
+            .background(
+                RoundedRectangle(cornerRadius: 16, style: .continuous)
+                    .fill(Color(red: 0.09, green: 0.14, blue: 0.19))
+            )
+            .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .offset(x: isOpen ? -actionWidth : 0)
             .animation(.spring(response: 0.30, dampingFraction: 0.88), value: swipedGroup)
             .gesture(
                 DragGesture(minimumDistance: 18)
                     .onEnded { value in
                         let horizontal = value.translation.width
                         let vertical = abs(value.translation.height)
-
                         guard abs(horizontal) > vertical else { return }
 
                         if horizontal < -42 {
                             swipedGroup = group
-                        } else if horizontal > 32, swipedGroup == group {
+                        } else if horizontal > 32, isOpen {
                             swipedGroup = nil
                         }
                     }
             )
-            .dropDestination(for: DeviceDragItem.self) { items, _ in
-                guard let draggedDevice = items.first else { return false }
-                moveDevice(withID: draggedDevice.id, to: group)
-                targetedDropGroup = nil
-                return true
-            } isTargeted: { isTargeted in
-                if isTargeted {
-                    targetedDropGroup = group
-                } else if targetedDropGroup == group {
-                    targetedDropGroup = nil
-                }
-            }
         }
-        .contentShape(RoundedRectangle(cornerRadius: 18))
-        .onTapGesture {
-            if swipedGroup != nil {
-                swipedGroup = nil
-            }
-        }
+        .clipped()
     }
 
     private func groupHeader(
@@ -767,9 +790,6 @@ struct DevicesView: View {
                 }
 
                 Spacer()
-
-                Image(systemName: "chevron.right")
-                    .foregroundColor(.gray)
             }
             .padding(12)
             .background(

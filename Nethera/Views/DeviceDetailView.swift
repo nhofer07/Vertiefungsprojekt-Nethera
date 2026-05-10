@@ -187,7 +187,7 @@ struct DeviceDetailView: View {
                     statsGrid
                     controlsCard
                     blocklistCard
-                    presetsHintCard
+                    presetApplyCard
                     Spacer(minLength: 20)
                 }
                 .padding()
@@ -208,16 +208,6 @@ struct DeviceDetailView: View {
         .onChange(of: endTime) { persistSettings() }
         .onReceive(NotificationCenter.default.publisher(for: .groupBlocklistDidChange)) { _ in
             refreshGroupBlocklistToken = UUID()
-        }
-        .toolbar {
-            ToolbarItem(placement: .navigationBarTrailing) {
-                NavigationLink(destination: presetsPage.onAppear { refreshPresets() }) {
-                    Image(systemName: "slider.horizontal.3")
-                        .font(.title2)
-                        .foregroundColor(.white)
-                        .frame(width: 40, height: 40)
-                }
-            }
         }
         .sheet(isPresented: $showBlocklistSheet) {
             BlocklistEditorSheet(
@@ -372,6 +362,74 @@ struct DeviceDetailView: View {
         }
         .padding()
         .background(cardBackground)
+    }
+
+
+    private var presetApplyCard: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            cardTitle("Preset anwenden", icon: "slider.horizontal.3")
+
+            if presets.isEmpty {
+                Text("Noch keine Presets vorhanden. Erstelle Presets unten im eigenen Presets-Tab.")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.72))
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(14)
+                    .background(Color.white.opacity(0.06))
+                    .clipShape(RoundedRectangle(cornerRadius: 16))
+            } else {
+                VStack(spacing: 10) {
+                    ForEach(presets) { preset in
+                        Button {
+                            applyPreset(preset)
+                        } label: {
+                            HStack(spacing: 12) {
+                                Image(systemName: isActivePreset(preset) ? "checkmark.circle.fill" : "circle")
+                                    .foregroundColor(isActivePreset(preset) ? .cyan : .white.opacity(0.55))
+
+                                VStack(alignment: .leading, spacing: 4) {
+                                    Text(preset.name)
+                                        .font(.headline)
+                                        .foregroundColor(.white)
+
+                                    Text(presetSummary(preset))
+                                        .font(.caption)
+                                        .foregroundColor(.white.opacity(0.66))
+                                        .lineLimit(2)
+                                }
+
+                                Spacer()
+
+                                Text(isActivePreset(preset) ? "Aktiv" : "Anwenden")
+                                    .font(.caption.weight(.semibold))
+                                    .foregroundColor(isActivePreset(preset) ? .cyan : .black)
+                                    .padding(.horizontal, 10)
+                                    .padding(.vertical, 7)
+                                    .background(isActivePreset(preset) ? Color.cyan.opacity(0.12) : Color(red: 0.35, green: 0.75, blue: 0.9))
+                                    .clipShape(Capsule())
+                            }
+                            .padding(14)
+                            .background(Color.white.opacity(0.06))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                        }
+                        .buttonStyle(.plain)
+                    }
+                }
+            }
+        }
+        .padding()
+        .background(cardBackground)
+    }
+
+    private func presetSummary(_ preset: DevicePreset) -> String {
+        var parts: [String] = []
+        parts.append(preset.parentalControl ? "Kindersicherung" : "Ohne Kindersicherung")
+        if preset.prioritized { parts.append("Priorisiert") }
+        if preset.timeLimitEnabled {
+            parts.append("Zeit: \(preset.startTime.formatted(date: .omitted, time: .shortened))–\(preset.endTime.formatted(date: .omitted, time: .shortened))")
+        }
+        if preset.blocklist.hasActiveRules { parts.append(preset.blocklist.summaryText) }
+        return parts.joined(separator: " • ")
     }
 
     private var presetsHintCard: some View {
