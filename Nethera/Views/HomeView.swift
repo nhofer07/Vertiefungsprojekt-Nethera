@@ -62,7 +62,7 @@ struct HomeView: View {
 
                                 NavigationLink(destination: BlacklistDashboardView()) {
                                     shortcutCard(
-                                        title: "Blacklist",
+                                        title: "Blocklist",
                                         subtitle: "Domains sperren",
                                         symbol: "nosign",
                                         tint: Color(red: 0.92, green: 0.45, blue: 0.52)

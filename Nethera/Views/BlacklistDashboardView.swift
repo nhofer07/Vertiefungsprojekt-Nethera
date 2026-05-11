@@ -63,7 +63,7 @@ struct BlacklistDashboardView: View {
 
                 ScrollView(showsIndicators: false) {
                     VStack(spacing: 20) {
-                        PageHeaderView(title: "Blacklist", showBackButton: true)
+                        PageHeaderView(title: "Blocklist", showBackButton: true)
 
                         VStack(spacing: 20) {
                             statsRow
