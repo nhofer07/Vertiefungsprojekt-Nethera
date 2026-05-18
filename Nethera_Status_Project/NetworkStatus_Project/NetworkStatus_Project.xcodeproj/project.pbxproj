@@ -13,8 +13,8 @@
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		4BE7FF002FB0960300D2D7CA /* NetworkStatus_Project */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = NetworkStatus_Project;
-			sourceTree = "<group>";
+			path = ".";
+			sourceTree = SOURCE_ROOT;
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
 
