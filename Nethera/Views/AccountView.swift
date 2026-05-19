@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct AccountView: View {
+    @StateObject private var authentication = AuthenticationManager()
     
     // unsere Muster-Variablen + neuen gespeicherten:
     
@@ -78,12 +79,19 @@ struct AccountView: View {
                                 EditableTextRow(icon: "person.crop.circle", label: "Name", text: $name)
                                 EditableTextRow(icon: "envelope", label: "E-Mail", text: $email)
                                 EditableTextRow(icon: "phone", label: "Telefon", text: $phone)
-                                EditableSecureRow(icon: "lock", label: "Passwort", text: $password)
+
+                                if authentication.isUnlocked {
+                                    EditableTextRow(icon: "lock.open", label: "Passwort", text: $password)
+                                } else {
+                                    LockedSensitiveRow(icon: "lock", label: "Passwort")
+                                }
+
                                 SettingRow(icon: "calendar", label: "Geburtsdatum", value: "01.01.1990", isEditable: false)
                             }
                             
                             // Sicherheit
                             SectionCard(title: "Sicherheit") {
+                                SensitiveAccessCard(authentication: authentication)
                                 SettingRow(icon: "shield.lefthalf.fill", label: "2FA", value: "aktiviert", isEditable: false)
                                 SettingRow(icon: "key", label: "API-Zugriff", value: "deaktiviert", isEditable: false)
                             }

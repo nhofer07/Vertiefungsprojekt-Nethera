@@ -13,7 +13,7 @@ final class AuthenticationManager: ObservableObject {
         context.localizedCancelTitle = "Abbrechen"
 
         var error: NSError?
-        let reason = "Entsperre sensible Routerdaten wie WLAN-Passwort und Account-Passwort."
+        let reason = "Entsperre sensible Daten wie Router-, Gast-WLAN- und Konto-Passwörter."
 
         // obs face oder touch gibt überhaupt
         guard context.canEvaluatePolicy(.deviceOwnerAuthentication, error: &error) else {

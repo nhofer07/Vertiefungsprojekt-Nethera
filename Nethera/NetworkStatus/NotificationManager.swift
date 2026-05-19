@@ -2,6 +2,7 @@ import Foundation
 import Combine
 import UserNotifications
 
+@MainActor
 final class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
     @Published var authorizationStatus = "Nicht gefragt"
     @Published var isAuthorized = false
@@ -19,7 +20,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     // fragt ob man mitteilungen senden darf
     func requestPermission() {
         UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { [weak self] _, _ in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 self?.refreshAuthorizationStatus()
             }
         }
@@ -27,7 +28,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
 
     func refreshAuthorizationStatus() {
         UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
-            DispatchQueue.main.async {
+            Task { @MainActor in
                 switch settings.authorizationStatus {
                 case .authorized:
                     self?.authorizationStatus = "Erlaubt"
@@ -112,12 +113,40 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     }
 
     func sendNotification(title: String, body: String) {
+        UNUserNotificationCenter.current().getNotificationSettings { [weak self] settings in
+            switch settings.authorizationStatus {
+            case .authorized, .provisional, .ephemeral:
+                self?.scheduleNotification(title: title, body: body)
+            case .notDetermined:
+                UNUserNotificationCenter.current().requestAuthorization(options: [.alert, .sound, .badge]) { granted, _ in
+                    Task { @MainActor in
+                        self?.refreshAuthorizationStatus()
+                        if granted {
+                            self?.scheduleNotification(title: title, body: body)
+                        }
+                    }
+                }
+            case .denied:
+                Task { @MainActor in
+                    self?.authorizationStatus = "Blockiert"
+                    self?.isAuthorized = false
+                }
+            @unknown default:
+                Task { @MainActor in
+                    self?.authorizationStatus = "Unbekannt"
+                    self?.isAuthorized = false
+                }
+            }
+        }
+    }
+
+    private nonisolated func scheduleNotification(title: String, body: String) {
         let content = UNMutableNotificationContent()
         content.title = title
         content.body = body
         content.sound = .default
 
-        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 2, repeats: false)
+        let trigger = UNTimeIntervalNotificationTrigger(timeInterval: 1, repeats: false)
         let request = UNNotificationRequest(
             identifier: UUID().uuidString,
             content: content,
@@ -129,7 +158,7 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
     }
 
     // auch wenns geöffnet ist als banner
-    func userNotificationCenter(
+    nonisolated func userNotificationCenter(
         _ center: UNUserNotificationCenter,
         willPresent notification: UNNotification,
         withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void

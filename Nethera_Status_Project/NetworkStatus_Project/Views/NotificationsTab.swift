@@ -1,3 +1,5 @@
+// wirft die Notifications, also halt den type
+
 import SwiftUI
 
 struct NotificationsTab: View {
