@@ -12,6 +12,9 @@ struct NetheraApp: App {
     var body: some Scene {
         WindowGroup {
             ContentView()
+                .onAppear {
+                    NetheraWidgetDataStore.syncSnapshot()
+                }
         }
     }
 }

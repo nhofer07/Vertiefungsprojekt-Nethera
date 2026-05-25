@@ -193,12 +193,14 @@ enum NetheraStorage {
         var all = allDeviceSettings()
         all[deviceID.uuidString] = settings
         saveEncodable(all, forKey: deviceSettingsKey)
+        NetheraWidgetDataStore.syncSnapshot()
     }
 
     static func deleteDeviceSettings(for deviceID: UUID) {
         var all = allDeviceSettings()
         all.removeValue(forKey: deviceID.uuidString)
         saveEncodable(all, forKey: deviceSettingsKey)
+        NetheraWidgetDataStore.syncSnapshot()
     }
 
     static func loadPresets() -> [DevicePreset] {
@@ -207,6 +209,7 @@ enum NetheraStorage {
 
     static func savePresets(_ presets: [DevicePreset]) {
         saveEncodable(presets, forKey: presetsKey)
+        NetheraWidgetDataStore.syncSnapshot()
     }
 
     static func allGroupBlocklists() -> [String: BlocklistProfile] {
@@ -225,6 +228,7 @@ enum NetheraStorage {
             all.removeValue(forKey: group)
         }
         saveEncodable(all, forKey: groupBlocklistsKey)
+        NetheraWidgetDataStore.syncSnapshot()
         NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 
@@ -236,6 +240,7 @@ enum NetheraStorage {
             all[newGroup] = value
         }
         saveEncodable(all, forKey: groupBlocklistsKey)
+        NetheraWidgetDataStore.syncSnapshot()
         NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 
@@ -243,6 +248,7 @@ enum NetheraStorage {
         var all = allGroupBlocklists()
         all.removeValue(forKey: group)
         saveEncodable(all, forKey: groupBlocklistsKey)
+        NetheraWidgetDataStore.syncSnapshot()
         NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 }

@@ -201,6 +201,7 @@ struct SettingsView: View {
         UserDefaults.standard.set(darkMode, forKey: "router.darkMode")
         UserDefaults.standard.set(frequency, forKey: "router.frequency")
         UserDefaults.standard.set(firewall, forKey: "router.firewall")
+        NetheraWidgetDataStore.syncSnapshot()
 
         savedWifiName = wifiName
         savedPassword = password

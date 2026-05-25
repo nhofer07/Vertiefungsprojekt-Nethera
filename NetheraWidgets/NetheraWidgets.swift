@@ -4,11 +4,17 @@ import SwiftUI
 import UIKit
 import WidgetKit
 
-enum NetheraColors {
-    static let accent = Color(red: 0.35, green: 0.75, blue: 0.9)
-    static let success = Color(red: 0.45, green: 0.83, blue: 0.62)
-    static let warning = Color(red: 0.95, green: 0.71, blue: 0.3)
-    static let danger = Color(red: 0.92, green: 0.45, blue: 0.52)
+enum NetheraWidgetColor {
+    static let backgroundTop = Color(red: 0.03, green: 0.09, blue: 0.10)
+    static let backgroundBottom = Color(red: 0.01, green: 0.02, blue: 0.03)
+    static let card = Color.white.opacity(0.09)
+    static let line = Color.white.opacity(0.13)
+    static let text = Color.white
+    static let muted = Color.white.opacity(0.66)
+    static let cyan = Color(red: 0.33, green: 0.83, blue: 0.92)
+    static let green = Color(red: 0.47, green: 0.86, blue: 0.62)
+    static let yellow = Color(red: 0.96, green: 0.73, blue: 0.33)
+    static let red = Color(red: 0.93, green: 0.42, blue: 0.49)
 }
 
 struct NetheraWidgetEntry: TimelineEntry {
@@ -16,277 +22,236 @@ struct NetheraWidgetEntry: TimelineEntry {
     let snapshot: NetheraWidgetSnapshot
 }
 
-struct NetheraWidgetSnapshot {
+struct NetheraWidgetSnapshot: Codable {
+    let unknownDevices: Int
     let protectedDevices: Int
     let blockedThreats: Int
     let networkLoad: Int
-    let unknownDevices: Int
     let lastScan: String
-    let securityRecommendation: String
-    let guestSSID: String
+    let nextNetworkAction: String
+    let guestNetworkName: String
     let guestPassword: String
-    let dailyLimit: String
-    let childDevicesOnline: Int
-    let nextFocusWindow: String
+    let guestTimeLeft: String
     let childName: String
+    let screenTimeLeft: String
+    let focusStartsAt: String
     let activePreset: String
-    let familyRecommendation: String
+    let familyAction: String
 
-    static let demo = NetheraWidgetSnapshot(
-        protectedDevices: 5,
-        blockedThreats: 128,
-        networkLoad: 73,
+    static let fallback = NetheraWidgetSnapshot(
         unknownDevices: 1,
-        lastScan: "vor 8 min",
-        securityRecommendation: "1 neues Gerät prüfen",
-        guestSSID: "Nethera Guest",
-        guestPassword: "Guest_2026!",
-        dailyLimit: "1h 45m",
-        childDevicesOnline: 2,
-        nextFocusWindow: "20:30",
-        childName: "Lena",
-        activePreset: "Schultag",
-        familyRecommendation: "YouTube bleibt bis 18:00 blockiert"
+        protectedDevices: 5,
+        blockedThreats: 0,
+        networkLoad: 70,
+        lastScan: "vor acht Minuten",
+        nextNetworkAction: "Unbekanntes Gerät prüfen",
+        guestNetworkName: "Nethera Guest",
+        guestPassword: "In der App speichern",
+        guestTimeLeft: "Gastzugang aus den Einstellungen",
+        childName: "Kind",
+        screenTimeLeft: "Kein Zeitlimit aktiv",
+        focusStartsAt: "Keine Fokuszeit geplant",
+        activePreset: "Kein Preset aktiv",
+        familyAction: "In der App ein Preset aktivieren"
     )
+}
+
+enum NetheraWidgetDataStore {
+    private static let appGroupID = "group.NicoHofer.Nethera"
+    private static let snapshotKey = "widgets.snapshot"
+
+    static func loadSnapshot() -> NetheraWidgetSnapshot {
+        guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: snapshotKey),
+              let snapshot = try? JSONDecoder().decode(NetheraWidgetSnapshot.self, from: data) else {
+            return .fallback
+        }
+        return snapshot
+    }
 }
 
 struct NetheraWidgetProvider: TimelineProvider {
     func placeholder(in context: Context) -> NetheraWidgetEntry {
-        NetheraWidgetEntry(date: Date(), snapshot: .demo)
+        NetheraWidgetEntry(date: Date(), snapshot: .fallback)
     }
 
     func getSnapshot(in context: Context, completion: @escaping (NetheraWidgetEntry) -> Void) {
-        completion(NetheraWidgetEntry(date: Date(), snapshot: .demo))
+        completion(NetheraWidgetEntry(date: Date(), snapshot: NetheraWidgetDataStore.loadSnapshot()))
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<NetheraWidgetEntry>) -> Void) {
         let now = Date()
         let entries = (0..<6).compactMap { hourOffset in
             Calendar.current.date(byAdding: .hour, value: hourOffset, to: now).map {
-                NetheraWidgetEntry(date: $0, snapshot: .demo)
+                NetheraWidgetEntry(date: $0, snapshot: NetheraWidgetDataStore.loadSnapshot())
             }
         }
-        completion(Timeline(entries: entries, policy: .after(Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now)))
+        let refreshDate = Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
+        completion(Timeline(entries: entries, policy: .after(refreshDate)))
     }
 }
 
 @main
 struct NetheraWidgetsBundle: WidgetBundle {
     var body: some Widget {
-        NetheraShieldWidget()
-        NetheraGuestWidget()
-        NetheraFamilyWidget()
+        NetheraDailyCheckWidget()
+        NetheraGuestAccessWidget()
+        NetheraFamilyFocusWidget()
     }
 }
 
-struct NetheraShieldWidget: Widget {
-    let kind = "NetheraShieldWidget"
+struct NetheraDailyCheckWidget: Widget {
+    let kind = "NetheraDailyCheckWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: NetheraWidgetProvider()) { entry in
-            NetheraShieldWidgetView(entry: entry)
+            NetheraDailyCheckWidgetView(entry: entry)
         }
-        .configurationDisplayName("Nethera Netzwerk-Check")
-        .description("Zeigt, ob du heute im Netzwerk etwas prüfen musst.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .configurationDisplayName("Nethera Tagescheck")
+        .description("Zeigt die wichtigste Netzwerk-Aufgabe und den aktuellen Schutz.")
+        .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
-struct NetheraGuestWidget: Widget {
-    let kind = "NetheraGuestWidget"
+struct NetheraGuestAccessWidget: Widget {
+    let kind = "NetheraGuestAccessWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: NetheraWidgetProvider()) { entry in
-            NetheraGuestWidgetView(entry: entry)
+            NetheraGuestAccessWidgetView(entry: entry)
         }
-        .configurationDisplayName("Nethera Gast-WLAN")
-        .description("Gastnetz schnell teilen, ohne in der App etwas vorzubereiten.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .configurationDisplayName("Nethera Gastzugang")
+        .description("Zeigt den Gast-WLAN-QR-Code mit Name und Passwort.")
+        .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
-struct NetheraFamilyWidget: Widget {
-    let kind = "NetheraFamilyWidget"
+struct NetheraFamilyFocusWidget: Widget {
+    let kind = "NetheraFamilyFocusWidget"
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: NetheraWidgetProvider()) { entry in
-            NetheraFamilyWidgetView(entry: entry)
+            NetheraFamilyFocusWidgetView(entry: entry)
         }
-        .configurationDisplayName("Nethera Familienplan")
-        .description("Restzeit, aktives Preset und nächste Fokuszeit ohne App öffnen.")
-        .supportedFamilies([.systemSmall, .systemMedium])
+        .configurationDisplayName("Nethera Familienruhe")
+        .description("Zeigt Restzeit, aktives Profil und die nächste Fokuszeit.")
+        .supportedFamilies([.systemMedium])
+        .contentMarginsDisabled()
     }
 }
 
-struct NetheraShieldWidgetView: View {
+struct NetheraDailyCheckWidgetView: View {
     let entry: NetheraWidgetEntry
-    @Environment(\.widgetFamily) private var family
 
     var body: some View {
         NetheraWidgetBackground {
-            if family == .systemSmall {
-                VStack(alignment: .leading, spacing: 9) {
-                    WidgetHeader(title: "Netz-Check", icon: "checkmark.shield.fill")
-                    Spacer()
-
-                    HStack(alignment: .firstTextBaseline, spacing: 5) {
-                        Text("\(entry.snapshot.unknownDevices)")
-                            .font(.system(size: 44, weight: .black, design: .rounded))
-                            .foregroundStyle(entry.snapshot.unknownDevices == 0 ? NetheraColors.success : NetheraColors.warning)
-                        Text("neu")
-                            .font(.caption.weight(.black))
-                            .foregroundStyle(.white.opacity(0.72))
-                    }
-
-                    Text(entry.snapshot.securityRecommendation)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
-                        .lineLimit(2)
-
-                    Text("Scan \(entry.snapshot.lastScan)")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.55))
+            VStack(alignment: .leading, spacing: 9) {
+                HStack(alignment: .top, spacing: 10) {
+                    NetheraWidgetTitle(icon: "shield.checkered", title: "Nethera Tagescheck")
+                    Spacer(minLength: 0)
+                    NetheraStatusLabel(
+                        text: entry.snapshot.unknownDevices == 0 ? "Keine Aktion offen" : "Aktion offen",
+                        tint: entry.snapshot.unknownDevices == 0 ? NetheraWidgetColor.green : NetheraWidgetColor.yellow
+                    )
                 }
-                .widgetURL(URL(string: "nethera://devices"))
-            } else {
-                VStack(alignment: .leading, spacing: 13) {
-                    HStack {
-                        WidgetHeader(title: "Nethera Netzwerk-Check", icon: "checkmark.shield.fill")
-                        Spacer()
-                        StatusChip(text: entry.snapshot.unknownDevices == 0 ? "Alles ruhig" : "Prüfen", tint: entry.snapshot.unknownDevices == 0 ? NetheraColors.success : NetheraColors.warning)
-                    }
 
-                    HStack(spacing: 12) {
-                        PriorityPanel(
-                            title: "Nächste Aktion",
-                            value: entry.snapshot.securityRecommendation,
-                            icon: entry.snapshot.unknownDevices == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
-                            tint: entry.snapshot.unknownDevices == 0 ? NetheraColors.success : NetheraColors.warning
+                HStack(spacing: 10) {
+                    NetheraActionCard(
+                        icon: entry.snapshot.unknownDevices == 0 ? "checkmark.circle.fill" : "exclamationmark.triangle.fill",
+                        title: "Wichtigste Aufgabe",
+                        text: entry.snapshot.nextNetworkAction,
+                        tint: entry.snapshot.unknownDevices == 0 ? NetheraWidgetColor.green : NetheraWidgetColor.yellow
+                    )
+
+                    VStack(spacing: 8) {
+                        NetheraStackMetric(
+                            value: "\(entry.snapshot.protectedDevices)",
+                            label: "Geräte geschützt",
+                            icon: "desktopcomputer"
                         )
-
-                        VStack(spacing: 8) {
-                            CompactMetric(value: "\(entry.snapshot.protectedDevices)", label: "geschützt", icon: "desktopcomputer")
-                            CompactMetric(value: "\(entry.snapshot.blockedThreats)", label: "geblockt", icon: "nosign")
-                        }
-                        .frame(width: 92)
+                        NetheraStackMetric(
+                            value: "\(entry.snapshot.blockedThreats)",
+                            label: "Bedrohungen geblockt",
+                            icon: "nosign"
+                        )
                     }
-
-                    HStack {
-                        Label("Letzter Scan \(entry.snapshot.lastScan)", systemImage: "clock")
-                        Spacer()
-                        Label("\(entry.snapshot.networkLoad)% Last", systemImage: "waveform.path.ecg")
-                    }
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white.opacity(0.58))
+                    .frame(width: 116)
                 }
-                .widgetURL(URL(string: "nethera://devices"))
             }
         }
+        .widgetURL(URL(string: "nethera://devices"))
     }
 }
 
-struct NetheraGuestWidgetView: View {
+struct NetheraGuestAccessWidgetView: View {
     let entry: NetheraWidgetEntry
-    @Environment(\.widgetFamily) private var family
 
     var body: some View {
         NetheraWidgetBackground {
-            if family == .systemSmall {
-                VStack(alignment: .leading, spacing: 9) {
-                    WidgetHeader(title: "Gast-WLAN", icon: "qrcode")
-                    Spacer()
-                    WidgetQRCodeMark(ssid: entry.snapshot.guestSSID, password: entry.snapshot.guestPassword)
-                        .frame(width: 68, height: 68)
-                    Text(entry.snapshot.guestSSID)
-                        .font(.caption.weight(.bold))
-                        .foregroundStyle(.white)
+            HStack(spacing: 13) {
+                NetheraQRCodeView(
+                    networkName: entry.snapshot.guestNetworkName,
+                    password: entry.snapshot.guestPassword
+                )
+                .frame(width: 100, height: 100)
+
+                VStack(alignment: .leading, spacing: 7) {
+                    NetheraWidgetTitle(icon: "qrcode.viewfinder", title: "Nethera Gastzugang")
+
+                    Text("Direkt verbinden")
+                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .foregroundStyle(NetheraWidgetColor.text)
                         .lineLimit(1)
-                    Text("Kamera öffnen und scannen")
-                        .font(.caption2.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.55))
-                }
-            } else {
-                HStack(spacing: 16) {
-                    WidgetQRCodeMark(ssid: entry.snapshot.guestSSID, password: entry.snapshot.guestPassword)
-                        .frame(width: 96, height: 96)
+                        .minimumScaleFactor(0.74)
 
-                    VStack(alignment: .leading, spacing: 9) {
-                        WidgetHeader(title: "Gast-WLAN", icon: "qrcode.viewfinder")
-                        Text("Sofort verbinden")
-                            .font(.title3.weight(.black))
-                            .foregroundStyle(.white)
-                            .lineLimit(1)
-                        Text(entry.snapshot.guestSSID)
-                            .font(.caption.weight(.bold))
-                            .foregroundStyle(.white.opacity(0.70))
-                        Text(entry.snapshot.guestPassword)
-                            .font(.system(.caption, design: .monospaced).weight(.bold))
-                            .foregroundStyle(.white.opacity(0.76))
-                            .padding(.horizontal, 9)
-                            .padding(.vertical, 6)
-                            .background(.white.opacity(0.10))
-                            .clipShape(Capsule())
-                        Text("Kein Menü, kein Suchen, einfach QR scannen.")
-                            .font(.caption2.weight(.semibold))
-                            .foregroundStyle(.white.opacity(0.55))
-                            .lineLimit(2)
-                    }
-                    Spacer()
+                    NetheraPlainRow(title: "Netzwerkname", value: entry.snapshot.guestNetworkName)
+                    NetheraPlainRow(title: "Passwort", value: entry.snapshot.guestPassword, monospaced: true)
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .widgetURL(URL(string: "nethera://guest"))
     }
 }
 
-struct NetheraFamilyWidgetView: View {
+struct NetheraFamilyFocusWidgetView: View {
     let entry: NetheraWidgetEntry
-    @Environment(\.widgetFamily) private var family
 
     var body: some View {
         NetheraWidgetBackground {
-            if family == .systemSmall {
-                VStack(alignment: .leading, spacing: 9) {
-                    WidgetHeader(title: entry.snapshot.childName, icon: "figure.2.and.child.holdinghands")
-                    Spacer()
-                    Text(entry.snapshot.dailyLimit)
-                        .font(.system(size: 30, weight: .black, design: .rounded))
-                        .foregroundStyle(.white)
-                    Text("Restzeit heute")
-                        .font(.caption.weight(.semibold))
-                        .foregroundStyle(.white.opacity(0.72))
-                    StatusChip(text: entry.snapshot.activePreset, tint: NetheraColors.accent)
+            VStack(alignment: .leading, spacing: 10) {
+                HStack(alignment: .top, spacing: 12) {
+                    NetheraWidgetTitle(icon: "moon.zzz.fill", title: "Nethera Familienruhe")
+                    Spacer(minLength: 0)
+                    NetheraStatusLabel(text: entry.snapshot.activePreset, tint: NetheraWidgetColor.cyan)
                 }
-                .widgetURL(URL(string: "nethera://presets"))
-            } else {
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        WidgetHeader(title: "Familienplan", icon: "lock.shield.fill")
-                        Spacer()
-                        StatusChip(text: entry.snapshot.activePreset, tint: NetheraColors.accent)
-                    }
 
-                    HStack(spacing: 12) {
-                        PriorityPanel(
-                            title: "\(entry.snapshot.childName) heute",
-                            value: entry.snapshot.familyRecommendation,
-                            icon: "hand.raised.fill",
-                            tint: NetheraColors.warning
+                HStack(spacing: 10) {
+                    NetheraActionCard(
+                        icon: "hand.raised.fill",
+                        title: "\(entry.snapshot.childName) heute",
+                        text: entry.snapshot.familyAction,
+                        tint: NetheraWidgetColor.yellow
+                    )
+
+                    VStack(spacing: 8) {
+                        NetheraStackMetric(
+                            value: entry.snapshot.screenTimeLeft,
+                            label: "Bildschirmzeit übrig",
+                            icon: "clock.fill"
                         )
-
-                        VStack(spacing: 8) {
-                            CompactMetric(value: entry.snapshot.dailyLimit, label: "Restzeit", icon: "clock.fill")
-                            CompactMetric(value: entry.snapshot.nextFocusWindow, label: "Fokus", icon: "moon.fill")
-                        }
-                        .frame(width: 96)
+                        NetheraStackMetric(
+                            value: entry.snapshot.focusStartsAt,
+                            label: "Nächste Fokuszeit",
+                            icon: "moon.fill"
+                        )
                     }
-
-                    Label("\(entry.snapshot.childDevicesOnline) Kindergeräte gerade online", systemImage: "iphone.gen3.radiowaves.left.and.right")
-                        .font(.caption2.weight(.bold))
-                        .foregroundStyle(.white.opacity(0.58))
+                    .frame(width: 132)
                 }
-                .widgetURL(URL(string: "nethera://presets"))
             }
         }
+        .widgetURL(URL(string: "nethera://presets"))
     }
 }
 
@@ -296,127 +261,172 @@ struct NetheraWidgetBackground<Content: View>: View {
     var body: some View {
         ZStack {
             LinearGradient(
-                colors: [
-                    Color(red: 0.02, green: 0.11, blue: 0.14),
-                    Color(red: 0.02, green: 0.03, blue: 0.07),
-                    Color.black
-                ],
+                colors: [NetheraWidgetColor.backgroundTop, NetheraWidgetColor.backgroundBottom],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
 
-            Circle()
-                .fill(NetheraColors.accent.opacity(0.22))
-                .frame(width: 120, height: 120)
-                .blur(radius: 35)
-                .offset(x: 72, y: -64)
+            VStack(spacing: 0) {
+                Rectangle()
+                    .fill(NetheraWidgetColor.cyan.opacity(0.22))
+                    .frame(height: 3)
+                Spacer(minLength: 0)
+            }
 
             content
-                .padding(16)
+                .padding(.horizontal, 13)
+                .padding(.top, 12)
+                .padding(.bottom, 11)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .containerBackground(for: .widget) {
-            Color.black
+            NetheraWidgetColor.backgroundBottom
         }
     }
 }
 
-struct WidgetHeader: View {
-    let title: String
+struct NetheraWidgetTitle: View {
     let icon: String
+    let title: String
 
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
-                .font(.caption.weight(.black))
+                .font(.system(size: 12, weight: .black))
                 .foregroundStyle(.black)
                 .frame(width: 24, height: 24)
-                .background(NetheraColors.accent)
-                .clipShape(Circle())
+                .background(NetheraWidgetColor.cyan)
+                .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
             Text(title)
-                .font(.caption.weight(.black))
-                .foregroundStyle(.white)
+                .font(.system(size: 13, weight: .black, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(1)
+                .minimumScaleFactor(0.74)
         }
     }
 }
 
-struct ThreatBadge: View {
-    let count: Int
+struct NetheraStatusLabel: View {
+    let text: String
+    let tint: Color
 
     var body: some View {
-        Label("\(count) geblockt", systemImage: "nosign")
-            .font(.caption2.weight(.black))
-            .foregroundStyle(.white)
-            .padding(.horizontal, 9)
-            .padding(.vertical, 6)
-            .background(NetheraColors.danger.opacity(0.24))
-            .clipShape(Capsule())
+        Text(text)
+            .font(.system(size: 11, weight: .black, design: .rounded))
+            .foregroundStyle(NetheraWidgetColor.text)
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .padding(.horizontal, 8)
+            .padding(.vertical, 5)
+            .background(tint.opacity(0.23))
+            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
     }
 }
 
-struct RingProgress: View {
-    let value: Int
+struct NetheraActionCard: View {
+    let icon: String
+    let title: String
+    let text: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 12, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(width: 25, height: 25)
+                    .background(tint)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+                Text(title)
+                    .font(.system(size: 11, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.76)
+            }
+
+            Text(text)
+                .font(.system(size: 18, weight: .black, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(2)
+                .minimumScaleFactor(0.68)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+        .padding(11)
+        .background(NetheraWidgetColor.card)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(NetheraWidgetColor.line, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct NetheraStackMetric: View {
+    let value: String
     let label: String
+    let icon: String
 
     var body: some View {
-        ZStack {
-            Circle()
-                .stroke(.white.opacity(0.12), lineWidth: 10)
-            Circle()
-                .trim(from: 0, to: CGFloat(value) / 100)
-                .stroke(NetheraColors.accent, style: StrokeStyle(lineWidth: 10, lineCap: .round))
-                .rotationEffect(.degrees(-90))
-
-            VStack(spacing: 1) {
-                Text("\(value)%")
-                    .font(.system(size: 19, weight: .black, design: .rounded))
-                    .foregroundStyle(.white)
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.cyan)
                 Text(label)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white.opacity(0.62))
+                    .font(.system(size: 10, weight: .bold))
+                    .foregroundStyle(NetheraWidgetColor.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
             }
+
+            Text(value)
+                .font(.system(size: 15, weight: .black, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(2)
+                .minimumScaleFactor(0.58)
         }
-        .frame(width: 82, height: 82)
+        .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 7)
+        .background(NetheraWidgetColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
-struct QRLikeMark: View {
-    private let cells: [[Bool]] = [
-        [true, true, true, false, true, false, true],
-        [true, false, true, false, false, true, false],
-        [true, true, true, false, true, true, true],
-        [false, false, false, true, false, true, false],
-        [true, false, true, true, true, false, true],
-        [false, true, false, false, true, false, false],
-        [true, false, true, true, false, true, true]
-    ]
+struct NetheraPlainRow: View {
+    let title: String
+    let value: String
+    var monospaced = false
 
     var body: some View {
-        GeometryReader { geometry in
-            let gap: CGFloat = 3
-            let size = (geometry.size.width - gap * 6) / 7
+        VStack(alignment: .leading, spacing: 2) {
+            Text(title)
+                .font(.system(size: 10, weight: .black))
+                .foregroundStyle(NetheraWidgetColor.muted)
+                .lineLimit(1)
 
-            VStack(spacing: gap) {
-                ForEach(cells.indices, id: \.self) { row in
-                    HStack(spacing: gap) {
-                        ForEach(cells[row].indices, id: \.self) { column in
-                            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                                .fill(cells[row][column] ? Color.black : Color.clear)
-                                .frame(width: size, height: size)
-                        }
-                    }
-                }
-            }
-            .padding(8)
-            .background(Color.white)
-            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            Text(value)
+                .font(monospaced ? .system(size: 14, weight: .black, design: .monospaced) : .system(size: 14, weight: .black, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(1)
+                .minimumScaleFactor(0.58)
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
+        .background(NetheraWidgetColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 
-struct WidgetQRCodeMark: View {
-    let ssid: String
+struct NetheraQRCodeView: View {
+    let networkName: String
     let password: String
 
     var body: some View {
@@ -426,25 +436,25 @@ struct WidgetQRCodeMark: View {
                     .interpolation(.none)
                     .resizable()
                     .scaledToFit()
-                    .padding(8)
-                    .background(Color.white)
-                    .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
             } else {
-                QRLikeMark()
+                NetheraFallbackQRCode()
             }
         }
+        .padding(7)
+        .background(Color.white)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
     private func makeQRCode() -> UIImage? {
-        let escapedSSID = escape(ssid)
-        let escapedPassword = escape(password)
-        let wifiPayload = "WIFI:T:WPA;S:\(escapedSSID);P:\(escapedPassword);;"
-
+        let payload = "WIFI:T:WPA;S:\(escape(networkName));P:\(escape(password));;"
         let filter = CIFilter.qrCodeGenerator()
-        filter.message = Data(wifiPayload.utf8)
+        filter.message = Data(payload.utf8)
         filter.correctionLevel = "M"
 
-        guard let outputImage = filter.outputImage else { return nil }
+        guard let outputImage = filter.outputImage else {
+            return nil
+        }
+
         let scaledImage = outputImage.transformed(by: CGAffineTransform(scaleX: 8, y: 8))
         let context = CIContext()
 
@@ -465,114 +475,34 @@ struct WidgetQRCodeMark: View {
     }
 }
 
-struct MetricPill: View {
-    let value: String
-    let label: String
-    let icon: String
+struct NetheraFallbackQRCode: View {
+    private let cells: [[Bool]] = [
+        [true, true, true, false, true, false, true],
+        [true, false, true, false, false, true, false],
+        [true, true, true, false, true, true, true],
+        [false, false, false, true, false, true, false],
+        [true, false, true, true, true, false, true],
+        [false, true, false, false, true, false, false],
+        [true, false, true, true, false, true, true]
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            Image(systemName: icon)
-                .font(.caption.weight(.bold))
-                .foregroundStyle(NetheraColors.accent)
-            Text(value)
-                .font(.headline.weight(.black))
-                .foregroundStyle(.white)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-            Text(label)
-                .font(.caption2.weight(.bold))
-                .foregroundStyle(.white.opacity(0.62))
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(10)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
-    }
-}
+        GeometryReader { geometry in
+            let gap: CGFloat = 3
+            let size = max(2, (geometry.size.width - gap * 6) / 7)
 
-struct StatusChip: View {
-    let text: String
-    let tint: Color
-
-    var body: some View {
-        Text(text)
-            .font(.caption2.weight(.black))
-            .foregroundStyle(.white)
-            .lineLimit(1)
-            .minimumScaleFactor(0.72)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(tint.opacity(0.24))
-            .clipShape(Capsule())
-    }
-}
-
-struct PriorityPanel: View {
-    let title: String
-    let value: String
-    let icon: String
-    let tint: Color
-
-    var body: some View {
-        HStack(alignment: .top, spacing: 10) {
-            Image(systemName: icon)
-                .font(.caption.weight(.black))
-                .foregroundStyle(.black)
-                .frame(width: 28, height: 28)
-                .background(tint)
-                .clipShape(Circle())
-
-            VStack(alignment: .leading, spacing: 5) {
-                Text(title)
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(.white.opacity(0.72))
-                    .lineLimit(1)
-
-                Text(value)
-                    .font(.headline.weight(.black))
-                    .foregroundStyle(.white)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.76)
+            VStack(spacing: gap) {
+                ForEach(cells.indices, id: \.self) { row in
+                    HStack(spacing: gap) {
+                        ForEach(cells[row].indices, id: \.self) { column in
+                            RoundedRectangle(cornerRadius: 1.5, style: .continuous)
+                                .fill(cells[row][column] ? Color.black : Color.clear)
+                                .frame(width: size, height: size)
+                        }
+                    }
+                }
             }
-
-            Spacer(minLength: 0)
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .frame(maxWidth: .infinity, minHeight: 76, alignment: .topLeading)
-        .padding(12)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-    }
-}
-
-struct CompactMetric: View {
-    let value: String
-    let label: String
-    let icon: String
-
-    var body: some View {
-        HStack(spacing: 7) {
-            Image(systemName: icon)
-                .font(.caption2.weight(.black))
-                .foregroundStyle(NetheraColors.accent)
-                .frame(width: 16)
-
-            VStack(alignment: .leading, spacing: 1) {
-                Text(value)
-                    .font(.caption.weight(.black))
-                    .foregroundStyle(.white)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.68)
-                Text(label)
-                    .font(.caption2.weight(.bold))
-                    .foregroundStyle(.white.opacity(0.55))
-                    .lineLimit(1)
-            }
-
-            Spacer(minLength: 0)
-        }
-        .padding(9)
-        .background(.white.opacity(0.08))
-        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }

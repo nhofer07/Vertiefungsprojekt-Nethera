@@ -252,11 +252,13 @@ struct DevicesView: View {
     private func saveDevices() {
         guard let data = try? JSONEncoder().encode(devices) else { return }
         UserDefaults.standard.set(data, forKey: Self.devicesKey)
+        NetheraWidgetDataStore.syncSnapshot()
     }
 
     private func saveGroups() {
         guard let data = try? JSONEncoder().encode(groups) else { return }
         UserDefaults.standard.set(data, forKey: Self.groupsKey)
+        NetheraWidgetDataStore.syncSnapshot()
     }
 
     private func ensureFallbackGroupExists() {
