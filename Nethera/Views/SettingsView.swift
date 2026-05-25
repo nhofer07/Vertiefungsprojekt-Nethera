@@ -10,7 +10,7 @@ import UIKit
 
 struct SettingsView: View {
     @StateObject private var authentication = AuthenticationManager()
-    @StateObject private var notificationManager = NotificationManager()
+    @StateObject private var notificationManager = NotificationManager.shared
     
     @State private var wifiName = "Nethera"
     @State private var password = "27N!G?4"
@@ -111,6 +111,7 @@ struct SettingsView: View {
                             SectionCard(title: "Mitteilungen", icon: "bell.badge") {
                                 ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
                                     .onChange(of: notifications) {
+                                        notificationManager.automaticWarningsEnabled = notifications
                                         if notifications {
                                             notificationManager.requestPermission()
                                         }
@@ -194,6 +195,8 @@ struct SettingsView: View {
     
     // save funktion:
     func saveSettings() {
+        let wasFirewallEnabled = savedFirewall
+
         UserDefaults.standard.set(wifiName, forKey: "router.wifiName")
         UserDefaults.standard.set(password, forKey: "router.password")
         UserDefaults.standard.set(guestPassword, forKey: "router.guestPassword")
@@ -201,6 +204,8 @@ struct SettingsView: View {
         UserDefaults.standard.set(darkMode, forKey: "router.darkMode")
         UserDefaults.standard.set(frequency, forKey: "router.frequency")
         UserDefaults.standard.set(firewall, forKey: "router.firewall")
+        notificationManager.automaticWarningsEnabled = notifications
+        notificationManager.handleFirewallChange(wasEnabled: wasFirewallEnabled, isEnabled: firewall)
         NetheraWidgetDataStore.syncSnapshot()
 
         savedWifiName = wifiName
@@ -249,6 +254,7 @@ struct SettingsView: View {
         savedDarkMode = darkMode
         savedFrequency = frequency
         savedFirewall = firewall
+        notificationManager.automaticWarningsEnabled = notifications
     }
 
     private func makeGuestQRCode() {

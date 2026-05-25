@@ -14,6 +14,7 @@ struct NetheraApp: App {
             ContentView()
                 .onAppear {
                     NetheraWidgetDataStore.syncSnapshot()
+                    NotificationManager.shared.startAutomaticMonitoring()
                 }
         }
     }

@@ -1,19 +1,26 @@
 import Foundation
 import Combine
+import Network
 import UserNotifications
 
 @MainActor
 final class NotificationManager: NSObject, ObservableObject, UNUserNotificationCenterDelegate {
+    static let shared = NotificationManager()
+
     @Published var authorizationStatus = "Nicht gefragt"
     @Published var isAuthorized = false
     @Published var automaticWarningsEnabled = true
 
     private var lastStatusText = ""
     private var lastConnectionType = ""
+    private let monitor = NWPathMonitor()
+    private let monitorQueue = DispatchQueue(label: "nethera.network.monitor")
+    private var isMonitoringNetwork = false
 
     override init() {
         super.init()
         UNUserNotificationCenter.current().delegate = self
+        automaticWarningsEnabled = UserDefaults.standard.object(forKey: "router.notifications") as? Bool ?? true
         refreshAuthorizationStatus()
     }
 
@@ -53,6 +60,33 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         }
     }
 
+    // startet echte netzwerk-überwachung:
+    func startAutomaticMonitoring() {
+        guard !isMonitoringNetwork else { return }
+        isMonitoringNetwork = true
+
+        monitor.pathUpdateHandler = { [weak self] path in
+            let statusText = path.status == .satisfied ? "Online" : "Offline"
+            let connectionType: String
+
+            if path.usesInterfaceType(.wifi) {
+                connectionType = "WLAN"
+            } else if path.usesInterfaceType(.cellular) {
+                connectionType = "Mobile Daten"
+            } else if path.status == .satisfied {
+                connectionType = "Andere Verbindung"
+            } else {
+                connectionType = "Keine Verbindung"
+            }
+
+            Task { @MainActor in
+                self?.handleNetworkChange(statusText: statusText, connectionType: connectionType)
+            }
+        }
+
+        monitor.start(queue: monitorQueue)
+    }
+
     // tracked den network state
     func handleNetworkChange(statusText: String, connectionType: String) {
         guard automaticWarningsEnabled else {
@@ -82,6 +116,50 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         lastConnectionType = connectionType
     }
 
+    // meldet neue unbekannte geräte:
+    func handleDeviceListChange(_ devices: [Device]) {
+        guard automaticWarningsEnabled else { return }
+
+        let unknownNames = Set(
+            devices
+                .filter { $0.group == "Nicht zugeordnet" || $0.group == "Neu verbunden" }
+                .map(\.name)
+        )
+        let key = "notifications.knownUnknownDevices"
+        let knownNames = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+
+        guard !knownNames.isEmpty else {
+            UserDefaults.standard.set(Array(unknownNames), forKey: key)
+            return
+        }
+
+        let newNames = unknownNames.subtracting(knownNames)
+        if let deviceName = newNames.sorted().first {
+            sendNewDeviceWarning(deviceName: deviceName)
+        }
+
+        UserDefaults.standard.set(Array(unknownNames), forKey: key)
+    }
+
+    // meldet direkt wenn ein gerät manuell in nicht zugeordnet landet:
+    func handleDeviceMovedToUnassigned(deviceName: String) {
+        guard automaticWarningsEnabled else { return }
+        sendNewDeviceWarning(deviceName: deviceName)
+
+        let key = "notifications.knownUnknownDevices"
+        var knownNames = Set(UserDefaults.standard.stringArray(forKey: key) ?? [])
+        knownNames.insert(deviceName)
+        UserDefaults.standard.set(Array(knownNames), forKey: key)
+    }
+
+    // meldet wenn die firewall deaktiviert wird:
+    func handleFirewallChange(wasEnabled: Bool, isEnabled: Bool) {
+        guard automaticWarningsEnabled else { return }
+        if wasEnabled && !isEnabled {
+            sendSecurityReminder()
+        }
+    }
+
     // alle types
     
     func sendOfflineWarning() {
@@ -109,6 +187,13 @@ final class NotificationManager: NSObject, ObservableObject, UNUserNotificationC
         sendNotification(
             title: "Nethera Gerät erkannt",
             body: "Demo: Ein neues Gerät wurde im Netzwerk gefunden: iPhone von Gast."
+        )
+    }
+
+    func sendNewDeviceWarning(deviceName: String) {
+        sendNotification(
+            title: "Nethera Gerät erkannt",
+            body: "Ein neues unbekanntes Gerät wurde gefunden: \(deviceName)."
         )
     }
 

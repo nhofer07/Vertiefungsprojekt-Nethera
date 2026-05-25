@@ -252,6 +252,7 @@ struct DevicesView: View {
     private func saveDevices() {
         guard let data = try? JSONEncoder().encode(devices) else { return }
         UserDefaults.standard.set(data, forKey: Self.devicesKey)
+        NotificationManager.shared.handleDeviceListChange(devices)
         NetheraWidgetDataStore.syncSnapshot()
     }
 
@@ -278,8 +279,14 @@ struct DevicesView: View {
         guard let index = devices.firstIndex(where: { $0.id == deviceID }) else { return }
         guard devices[index].group != group else { return }
 
+        let movedDeviceName = devices[index].name
+
         withAnimation(.spring(response: 0.28, dampingFraction: 0.82)) {
             devices[index].group = group
+        }
+
+        if group == fallbackGroup {
+            NotificationManager.shared.handleDeviceMovedToUnassigned(deviceName: movedDeviceName)
         }
 
         saveDevices()
