@@ -22,11 +22,13 @@ enum NetheraWidgetDataStore {
     static let appGroupID = "group.NicoHofer.Nethera"
     private static let snapshotKey = "widgets.snapshot"
 
+    // schreibt aktuelle app-daten fuer die widgets:
     static func syncSnapshot() {
         save(makeSnapshot())
         WidgetCenter.shared.reloadAllTimelines()
     }
 
+    // speichert den snapshot in der app group:
     private static func save(_ snapshot: NetheraWidgetSnapshot) {
         guard let data = try? JSONEncoder().encode(snapshot) else { return }
         widgetDefaults.set(data, forKey: snapshotKey)
@@ -36,6 +38,7 @@ enum NetheraWidgetDataStore {
         UserDefaults(suiteName: appGroupID) ?? .standard
     }
 
+    // baut aus gespeicherten app-werten die widget-anzeige:
     private static func makeSnapshot() -> NetheraWidgetSnapshot {
         let defaults = UserDefaults.standard
         let devices = loadDevices(from: defaults)
@@ -68,6 +71,7 @@ enum NetheraWidgetDataStore {
         )
     }
 
+    // lädt die geräte aus dem geräte-tab:
     private static func loadDevices(from defaults: UserDefaults) -> [Device] {
         guard let data = defaults.data(forKey: "devices.list"),
               let decoded = try? JSONDecoder().decode([Device].self, from: data) else {
@@ -82,6 +86,7 @@ enum NetheraWidgetDataStore {
         return decoded
     }
 
+    // lädt die gespeicherten presets:
     private static func loadPresets(from defaults: UserDefaults) -> [DevicePreset] {
         guard let data = defaults.data(forKey: "SavedDevicePresets"),
               let decoded = try? JSONDecoder().decode([DevicePreset].self, from: data) else {
@@ -90,6 +95,7 @@ enum NetheraWidgetDataStore {
         return decoded
     }
 
+    // lädt extra-einstellungen pro gerät:
     private static func loadDeviceSettings(from defaults: UserDefaults) -> [String: DeviceSettings] {
         guard let data = defaults.data(forKey: "devices.settings"),
               let decoded = try? JSONDecoder().decode([String: DeviceSettings].self, from: data) else {
@@ -98,16 +104,19 @@ enum NetheraWidgetDataStore {
         return decoded
     }
 
+    // schätzt blockierte treffer aus aktiven blocklist-regeln:
     private static func estimateBlockedThreats(from presets: [DevicePreset], settings: [String: DeviceSettings]) -> Int {
         let presetRules = presets.reduce(0) { $0 + $1.blocklist.totalRuleCount }
         let deviceRules = settings.values.reduce(0) { $0 + $1.blocklist.totalRuleCount }
         return max(0, (presetRules + deviceRules) * 12)
     }
 
+    // schätzt die last anhand der aktiven geräte:
     private static func estimateNetworkLoad(from devices: [Device]) -> Int {
         min(99, max(8, devices.filter { $0.group != "Ignoriert" }.count * 14))
     }
 
+    // formuliert die wichtigste netzwerk-aktion:
     private static func networkAction(for unknownDevices: Int, devices: [Device]) -> String {
         if unknownDevices == 0 {
             return "Alle Geräte sind zugeordnet"
@@ -118,6 +127,7 @@ enum NetheraWidgetDataStore {
         return "\(unknownDevices) unbekannte Geräte prüfen"
     }
 
+    // macht aus gerätenamen einen kurzen anzeigenamen:
     private static func shortChildName(from deviceName: String?) -> String {
         guard let deviceName else { return "Kind" }
         if deviceName.contains("Anna") { return "Anna" }
@@ -126,6 +136,7 @@ enum NetheraWidgetDataStore {
         return deviceName.components(separatedBy: " ").first ?? deviceName
     }
 
+    // berechnet den restzeit-text aus dem aktiven preset:
     private static func timeLeftText(from preset: DevicePreset?) -> String {
         guard let preset, preset.timeLimitEnabled else {
             return "Kein Zeitlimit aktiv"
@@ -136,6 +147,7 @@ enum NetheraWidgetDataStore {
         return "\(minutes / 60) Stunden \(minutes % 60) Minuten übrig"
     }
 
+    // formatiert die nächste fokuszeit:
     private static func focusText(from preset: DevicePreset?) -> String {
         guard let preset, preset.timeLimitEnabled else {
             return "Keine Fokuszeit geplant"
@@ -143,6 +155,7 @@ enum NetheraWidgetDataStore {
         return "heute um \(timeFormatter.string(from: preset.startTime)) Uhr"
     }
 
+    // beschreibt was das aktive familien-preset gerade macht:
     private static func familyActionText(from preset: DevicePreset?, childName: String) -> String {
         guard let preset else {
             return "Für \(childName) ist kein Preset aktiv"

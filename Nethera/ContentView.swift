@@ -34,10 +34,26 @@ struct ContentView: View {
             
         }
         .background(Color(red: 0.02, green: 0.03, blue: 0.08).ignoresSafeArea())
+        .onOpenURL { url in
+            openWidgetLink(url)
+        }
+    }
+
+    // öffnet den passenden tab wenn man auf ein widget tippt:
+    private func openWidgetLink(_ url: URL) {
+        switch url.host {
+        case "devices":
+            selectedTab = 0
+        case "guest":
+            selectedTab = 3
+        case "presets":
+            selectedTab = 2
+        default:
+            selectedTab = 1
+        }
     }
 }
 
 #Preview {
     ContentView()
 }
-

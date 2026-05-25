@@ -60,6 +60,7 @@ enum NetheraWidgetDataStore {
     private static let appGroupID = "group.NicoHofer.Nethera"
     private static let snapshotKey = "widgets.snapshot"
 
+    // liest die daten, die die app für die widgets gespeichert hat:
     static func loadSnapshot() -> NetheraWidgetSnapshot {
         guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: snapshotKey),
               let snapshot = try? JSONDecoder().decode(NetheraWidgetSnapshot.self, from: data) else {
@@ -70,14 +71,17 @@ enum NetheraWidgetDataStore {
 }
 
 struct NetheraWidgetProvider: TimelineProvider {
+    // platzhalter wenn iOS das widget in der galerie zeigt:
     func placeholder(in context: Context) -> NetheraWidgetEntry {
         NetheraWidgetEntry(date: Date(), snapshot: .fallback)
     }
 
+    // schneller einzelstand fuer previews und kurze aktualisierungen:
     func getSnapshot(in context: Context, completion: @escaping (NetheraWidgetEntry) -> Void) {
         completion(NetheraWidgetEntry(date: Date(), snapshot: NetheraWidgetDataStore.loadSnapshot()))
     }
 
+    // timeline damit iOS die widget-daten regelmäßig neu laden kann:
     func getTimeline(in context: Context, completion: @escaping (Timeline<NetheraWidgetEntry>) -> Void) {
         let now = Date()
         let entries = (0..<6).compactMap { hourOffset in
@@ -445,6 +449,7 @@ struct NetheraQRCodeView: View {
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 
+    // erstellt den echten WLAN-QR-Code fuer das gastnetz:
     private func makeQRCode() -> UIImage? {
         let payload = "WIFI:T:WPA;S:\(escape(networkName));P:\(escape(password));;"
         let filter = CIFilter.qrCodeGenerator()
@@ -465,6 +470,7 @@ struct NetheraQRCodeView: View {
         return UIImage(cgImage: cgImage)
     }
 
+    // escaped sonderzeichen im WLAN-QR-payload:
     private func escape(_ value: String) -> String {
         value
             .replacingOccurrences(of: "\\", with: "\\\\")
