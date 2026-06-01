@@ -69,6 +69,7 @@ struct BlocklistProfile: Codable, Equatable {
 }
 
 struct DeviceSettings: Codable, Equatable {
+    var activePresetID: UUID?
     var parentalControl: Bool
     var prioritized: Bool
     var timeLimitEnabled: Bool
@@ -78,6 +79,7 @@ struct DeviceSettings: Codable, Equatable {
     var hasOwnBlocklist: Bool
 
     init(
+        activePresetID: UUID? = nil,
         parentalControl: Bool = true,
         prioritized: Bool = false,
         timeLimitEnabled: Bool = false,
@@ -86,6 +88,7 @@ struct DeviceSettings: Codable, Equatable {
         blocklist: BlocklistProfile = BlocklistProfile(),
         hasOwnBlocklist: Bool = false
     ) {
+        self.activePresetID = activePresetID
         self.parentalControl = parentalControl
         self.prioritized = prioritized
         self.timeLimitEnabled = timeLimitEnabled
@@ -96,11 +99,12 @@ struct DeviceSettings: Codable, Equatable {
     }
 
     private enum CodingKeys: String, CodingKey {
-        case parentalControl, prioritized, timeLimitEnabled, startTime, endTime, blocklist, hasOwnBlocklist
+        case activePresetID, parentalControl, prioritized, timeLimitEnabled, startTime, endTime, blocklist, hasOwnBlocklist
     }
 
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
+        activePresetID = try container.decodeIfPresent(UUID.self, forKey: .activePresetID)
         parentalControl = try container.decodeIfPresent(Bool.self, forKey: .parentalControl) ?? true
         prioritized = try container.decodeIfPresent(Bool.self, forKey: .prioritized) ?? false
         timeLimitEnabled = try container.decodeIfPresent(Bool.self, forKey: .timeLimitEnabled) ?? false

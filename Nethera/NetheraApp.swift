@@ -13,6 +13,7 @@ struct NetheraApp: App {
         WindowGroup {
             ContentView()
                 .onAppear {
+                    NetheraBackend.refreshFromMongoDB()
                     NetheraWidgetDataStore.syncSnapshot()
                     NotificationManager.shared.startAutomaticMonitoring()
                 }

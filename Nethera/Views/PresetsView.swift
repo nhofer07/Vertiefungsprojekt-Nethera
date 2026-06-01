@@ -61,17 +61,20 @@ struct PresetsView: View {
             }
             .toolbar(.hidden, for: .navigationBar)
             .onAppear(perform: loadPresets)
+            .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+                loadPresets()
+            }
             .sheet(isPresented: $showCreateSheet) {
                 PresetFormSheet(mode: .create) { preset in
                     presets.insert(preset, at: 0)
-                    NetheraStorage.savePresets(presets)
+                    NetheraBackend.savePresets(presets)
                 }
             }
             .sheet(item: $presetToEdit) { preset in
                 PresetFormSheet(mode: .edit(preset)) { updatedPreset in
                     guard let index = presets.firstIndex(where: { $0.id == preset.id }) else { return }
                     presets[index] = updatedPreset
-                    NetheraStorage.savePresets(presets)
+                    NetheraBackend.savePresets(presets)
                 }
             }
         }
@@ -218,14 +221,14 @@ struct PresetsView: View {
     }
 
     private func loadPresets() {
-        presets = NetheraStorage.loadPresets()
+        presets = NetheraBackend.loadPresets()
     }
 
     private func deletePreset(_ preset: DevicePreset) {
         withAnimation {
             presets.removeAll { $0.id == preset.id }
         }
-        NetheraStorage.savePresets(presets)
+        NetheraBackend.savePresets(presets)
     }
 
     private var background: some View {

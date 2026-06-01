@@ -126,25 +126,136 @@ private struct GroupEditorSheet: View {
     }
 }
 
+private struct WidgetDevicesSheet: View {
+    @Environment(\.dismiss) private var dismiss
+
+    let devices: [Device]
+    let onSave: (Set<UUID>) -> Void
+
+    @State private var selectedIDs: Set<UUID>
+
+    init(devices: [Device], selectedIDs: Set<UUID>, onSave: @escaping (Set<UUID>) -> Void) {
+        self.devices = devices
+        self.onSave = onSave
+        _selectedIDs = State(initialValue: selectedIDs)
+    }
+
+    // auswahl fuer das geraete-widget:
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                LinearGradient(
+                    colors: [
+                        Color(red: 0.08, green: 0.18, blue: 0.22),
+                        Color(red: 0.02, green: 0.02, blue: 0.05)
+                    ],
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .ignoresSafeArea()
+
+                VStack(alignment: .leading, spacing: 14) {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("Widget-Geräte")
+                            .font(.title.bold())
+                            .foregroundColor(.white)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.78)
+
+                        Text("Wähle aus, welche Geräte im Widget durchschaltbar sind. Keine Auswahl zeigt alle Geräte.")
+                            .font(.subheadline)
+                            .foregroundColor(.white.opacity(0.68))
+                            .fixedSize(horizontal: false, vertical: true)
+                    }
+
+                    ScrollView(showsIndicators: true) {
+                        if devices.isEmpty {
+                            Text("Noch keine Geräte vorhanden.")
+                                .font(.headline)
+                                .foregroundColor(.white.opacity(0.72))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .padding(16)
+                                .background(Color.white.opacity(0.08))
+                                .clipShape(RoundedRectangle(cornerRadius: 18))
+                        } else {
+                            VStack(spacing: 10) {
+                                ForEach(devices) { device in
+                                    Button {
+                                        toggle(device.id)
+                                    } label: {
+                                        HStack(spacing: 12) {
+                                            Image(systemName: selectedIDs.contains(device.id) ? "checkmark.circle.fill" : "circle")
+                                                .foregroundColor(selectedIDs.contains(device.id) ? .cyan : .white.opacity(0.55))
+                                                .frame(width: 24)
+
+                                            Image(systemName: device.type)
+                                                .foregroundColor(.white)
+                                                .frame(width: 28)
+
+                                            VStack(alignment: .leading, spacing: 3) {
+                                                Text(device.name)
+                                                    .font(.headline)
+                                                    .foregroundColor(.white)
+                                                    .lineLimit(1)
+                                                    .minimumScaleFactor(0.75)
+
+                                                Text(device.group)
+                                                    .font(.caption)
+                                                    .foregroundColor(.white.opacity(0.62))
+                                                    .lineLimit(1)
+                                            }
+
+                                            Spacer()
+                                        }
+                                        .padding(.horizontal, 14)
+                                        .padding(.vertical, 12)
+                                        .background(Color.white.opacity(0.07))
+                                        .clipShape(RoundedRectangle(cornerRadius: 16))
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxHeight: .infinity)
+
+                    Button {
+                        onSave(selectedIDs)
+                        dismiss()
+                    } label: {
+                        Text("Auswahl speichern")
+                            .font(.headline.weight(.semibold))
+                            .foregroundColor(.black)
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 14)
+                            .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                            .clipShape(RoundedRectangle(cornerRadius: 16))
+                    }
+
+                }
+                .padding(.horizontal, 20)
+                .padding(.top, 28)
+                .padding(.bottom, 18)
+            }
+        }
+        .presentationDragIndicator(.visible)
+    }
+
+    private func toggle(_ id: UUID) {
+        if selectedIDs.contains(id) {
+            selectedIDs.remove(id)
+        } else {
+            selectedIDs.insert(id)
+        }
+    }
+}
+
 struct DevicesView: View {
-    private static let devicesKey = "devices.list"
-    private static let groupsKey = "devices.groups"
-
-    // dummydaten:
-    private static let defaultDevices = [
-        Device(id: UUID(), name: "iPhone von Nico", type: "iphone.homebutton", onlineTime: "12h", dataUsage: "57 GB", group: "Eltern"),
-        Device(id: UUID(), name: "MacBook Nico", type: "laptopcomputer", onlineTime: "5h", dataUsage: "12 GB", group: "Eltern"),
-        Device(id: UUID(), name: "Annas iPhone", type: "iphone", onlineTime: "6h", dataUsage: "4 GB", group: "Kinder"),
-        Device(id: UUID(), name: "Smart TV", type: "tv", onlineTime: "3h", dataUsage: "8 GB", group: "Wohnzimmer"),
-        Device(id: UUID(), name: "Tobis iPad", type: "ipad", onlineTime: "8m", dataUsage: "120 MB", group: "Nicht zugeordnet")
-    ]
-
-    private static let defaultGroups = ["Eltern", "Kinder", "Wohnzimmer", "Nicht zugeordnet", "Ignoriert"]
-
-    @State private var devices: [Device] = Self.loadDevices()
-    @State private var groups: [String] = Self.loadGroups()
+    @State private var devices: [Device] = NetheraBackend.loadDevices()
+    @State private var groups: [String] = NetheraBackend.loadGroups()
 
     @State private var showGroupSheet = false
+    @State private var showWidgetDevicesSheet = false
     @State private var groupSheetMode: GroupSheetMode = .create
 
     @State private var groupToDelete: String?
@@ -211,58 +322,20 @@ struct DevicesView: View {
         }
     }
 
-    nonisolated private static func normalizeGroupName(_ name: String) -> String {
-        switch name {
-        case "Gast", "Neu verbunden":
-            return "Nicht zugeordnet"
-        default:
-            return name
-        }
-    }
-
-    private static func loadDevices() -> [Device] {
-        guard let data = UserDefaults.standard.data(forKey: devicesKey),
-              var decoded = try? JSONDecoder().decode([Device].self, from: data) else {
-            return defaultDevices
-        }
-
-        for index in decoded.indices {
-            decoded[index].group = normalizeGroupName(decoded[index].group)
-        }
-
-        return decoded
-    }
-
-    private static func loadGroups() -> [String] {
-        guard let data = UserDefaults.standard.data(forKey: groupsKey),
-              let decoded = try? JSONDecoder().decode([String].self, from: data) else {
-            return defaultGroups
-        }
-
-        var cleaned: [String] = []
-        for group in decoded.map(normalizeGroupName) {
-            if !cleaned.contains(group) {
-                cleaned.append(group)
-            }
-        }
-
-        return cleaned.isEmpty ? defaultGroups : cleaned
-    }
-
     private func saveDevices() {
-        guard let data = try? JSONEncoder().encode(devices) else { return }
-        UserDefaults.standard.set(data, forKey: Self.devicesKey)
+        NetheraBackend.saveDevices(devices)
         NotificationManager.shared.handleDeviceListChange(devices)
         NetheraWidgetDataStore.syncSnapshot()
     }
 
     private func saveGroups() {
-        guard let data = try? JSONEncoder().encode(groups) else { return }
-        UserDefaults.standard.set(data, forKey: Self.groupsKey)
+        NetheraBackend.saveGroups(groups)
         NetheraWidgetDataStore.syncSnapshot()
     }
 
     private func ensureFallbackGroupExists() {
+        guard !groups.isEmpty || !devices.isEmpty else { return }
+
         var changed = false
         if !groups.contains(fallbackGroup) {
             groups.append(fallbackGroup)
@@ -327,7 +400,7 @@ struct DevicesView: View {
                 devices[index].group = name
             }
 
-            NetheraStorage.renameGroupBlocklist(from: oldName, to: name)
+            NetheraBackend.renameGroupBlocklist(from: oldName, to: name)
             saveGroups()
             saveDevices()
         }
@@ -343,59 +416,24 @@ struct DevicesView: View {
             devices[index].group = fallbackGroup
         }
 
-        NetheraStorage.deleteGroupBlocklist(for: group)
+        NetheraBackend.deleteGroupBlocklist(for: group)
         swipedGroup = nil
         saveGroups()
         saveDevices()
     }
 
     private func deviceSettings(for device: Device) -> DeviceSettings {
-        NetheraStorage.deviceSettings(for: device.id)
-    }
-
-    private func singleActivePreset() -> DevicePreset? {
-        var presets = NetheraStorage.loadPresets()
-        var didKeepActive = false
-
-        presets = presets.map { preset in
-            var copy = preset
-            if copy.isEnabled {
-                if didKeepActive {
-                    copy.isEnabled = false
-                } else {
-                    didKeepActive = true
-                }
-            }
-            return copy
-        }
-
-        NetheraStorage.savePresets(presets)
-        return presets.first { $0.isEnabled }
+        NetheraBackend.deviceSettings(for: device.id)
     }
 
     private func activePreset(for device: Device) -> DevicePreset? {
         let settings = deviceSettings(for: device)
-
-        guard settings.hasOwnBlocklist, let activePreset = singleActivePreset() else { return nil }
-
-        return [activePreset].first { preset in
-            preset.isEnabled &&
-            preset.parentalControl == settings.parentalControl &&
-            preset.prioritized == settings.prioritized &&
-            preset.timeLimitEnabled == settings.timeLimitEnabled &&
-            preset.blocklist == settings.blocklist &&
-            (!preset.timeLimitEnabled || (
-                // Vergleicht, ob die Minuten von zwei Zeiten gleich sind
-                Calendar.current.component(.hour, from: preset.startTime) == Calendar.current.component(.hour, from: settings.startTime) &&
-                Calendar.current.component(.minute, from: preset.startTime) == Calendar.current.component(.minute, from: settings.startTime) &&
-                Calendar.current.component(.hour, from: preset.endTime) == Calendar.current.component(.hour, from: settings.endTime) &&
-                Calendar.current.component(.minute, from: preset.endTime) == Calendar.current.component(.minute, from: settings.endTime)
-            ))
-        }
+        guard let activePresetID = settings.activePresetID else { return nil }
+        return NetheraBackend.loadPresets().first { $0.id == activePresetID }
     }
 
     private func blocklistProfile(for group: String) -> BlocklistProfile {
-        NetheraStorage.groupBlocklist(for: group)
+        NetheraBackend.groupBlocklist(for: group)
     }
 
     var body: some View {
@@ -419,16 +457,20 @@ struct DevicesView: View {
 
                     ScrollView(showsIndicators: false) {
                         VStack(spacing: 10) {
-                            if showMoveInfoBanner {
+                            if !NetheraBackend.isDatabaseAvailable() {
+                                databaseUnavailableCard
+                            } else if showMoveInfoBanner {
                                 infoBanner
                             }
 
-                            LazyVStack(spacing: 14) {
-                                ForEach(orderedGroups, id: \.self) { group in
-                                    groupSection(for: group)
+                            if NetheraBackend.isDatabaseAvailable() {
+                                LazyVStack(spacing: 14) {
+                                    ForEach(orderedGroups, id: \.self) { group in
+                                        groupSection(for: group)
+                                    }
                                 }
+                                .id(refreshGroupsToken)
                             }
-                            .id(refreshGroupsToken)
                         }
                         .padding(.horizontal, 12)
                         .padding(.vertical, 12)
@@ -440,7 +482,17 @@ struct DevicesView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
-            ensureFallbackGroupExists()
+            reloadFromBackend()
+            if NetheraBackend.isDatabaseAvailable() {
+                ensureFallbackGroupExists()
+            }
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+            reloadFromBackend()
+            if NetheraBackend.isDatabaseAvailable() {
+                ensureFallbackGroupExists()
+            }
+            refreshGroupsToken = UUID()
         }
         .onReceive(NotificationCenter.default.publisher(for: .groupBlocklistDidChange)) { _ in
             refreshGroupsToken = UUID()
@@ -454,13 +506,21 @@ struct DevicesView: View {
                 onConfirm: submitGroupName
             )
         }
+        .sheet(isPresented: $showWidgetDevicesSheet) {
+            WidgetDevicesSheet(
+                devices: devices,
+                selectedIDs: NetheraWidgetDataStore.selectedWidgetDeviceIDs()
+            ) { selectedIDs in
+                NetheraWidgetDataStore.saveSelectedWidgetDeviceIDs(selectedIDs)
+            }
+        }
         .sheet(item: $groupBlocklistTarget) { target in
             BlocklistEditorSheet(
                 title: "Gruppen-Blocklist",
                 subtitle: target.group,
                 initialProfile: blocklistProfile(for: target.group)
             ) { profile in
-                NetheraStorage.saveGroupBlocklist(profile, for: target.group)
+                NetheraBackend.saveGroupBlocklist(profile, for: target.group)
                 refreshGroupsToken = UUID()
             }
         }
@@ -476,18 +536,39 @@ struct DevicesView: View {
     }
 
     private var devicesTopBar: some View {
-        HStack(spacing: 12) {
+        HStack(spacing: 10) {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Verbundene Geräte")
-                    .font(.title.bold())
+                    .font(.system(size: 28, weight: .bold))
                     .foregroundColor(.white)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.68)
 
                 Text("Gruppen verwalten und Geräte zuordnen")
                     .font(.subheadline)
                     .foregroundColor(.white.opacity(0.58))
+                    .lineLimit(2)
             }
+            .layoutPriority(1)
 
             Spacer()
+
+            Button {
+                showWidgetDevicesSheet = true
+            } label: {
+                Image(systemName: "rectangle.stack.person.crop")
+                    .font(.title3.weight(.semibold))
+                    .foregroundColor(.cyan)
+                    .frame(width: 36, height: 36)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Circle())
+                    .overlay(
+                        Circle()
+                            .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                    )
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Widget-Geräte auswählen")
 
             Button {
                 openCreateGroupSheet()
@@ -495,7 +576,7 @@ struct DevicesView: View {
                 Image(systemName: "plus")
                     .font(.title3.weight(.semibold))
                     .foregroundColor(.cyan)
-                    .frame(width: 38, height: 38)
+                    .frame(width: 36, height: 36)
                     .background(Color.white.opacity(0.08))
                     .clipShape(Circle())
                     .overlay(
@@ -506,6 +587,42 @@ struct DevicesView: View {
             .buttonStyle(.plain)
             .accessibilityLabel("Neue Gruppe erstellen")
         }
+    }
+
+    private func reloadFromBackend() {
+        devices = NetheraBackend.loadDevices()
+        groups = NetheraBackend.loadGroups()
+    }
+
+    private var databaseUnavailableCard: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "xmark.icloud.fill")
+                .font(.title3.weight(.semibold))
+                .foregroundColor(.cyan)
+                .padding(.top, 2)
+
+            VStack(alignment: .leading, spacing: 5) {
+                Text("Verbindung zur Datenbank nicht möglich")
+                    .font(.headline)
+                    .foregroundColor(.white)
+
+                Text("Starte MongoDB und das Backend, dann wird die Geräteübersicht wieder aus der Datenbank geladen.")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.68))
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer()
+        }
+        .padding(16)
+        .background(
+            RoundedRectangle(cornerRadius: 18)
+                .fill(Color.white.opacity(0.08))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18)
+                        .stroke(Color.white.opacity(0.10), lineWidth: 1)
+                )
+        )
     }
 
     // infobanner:

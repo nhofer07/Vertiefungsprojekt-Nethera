@@ -1,5 +1,6 @@
 import CoreImage
 import CoreImage.CIFilterBuiltins
+import AppIntents
 import SwiftUI
 import UIKit
 import WidgetKit
@@ -20,6 +21,7 @@ enum NetheraWidgetColor {
 struct NetheraWidgetEntry: TimelineEntry {
     let date: Date
     let snapshot: NetheraWidgetSnapshot
+    let childIndex: Int
 }
 
 struct NetheraWidgetSnapshot: Codable {
@@ -37,60 +39,104 @@ struct NetheraWidgetSnapshot: Codable {
     let focusStartsAt: String
     let activePreset: String
     let familyAction: String
+    let childCards: [NetheraChildWidgetSnapshot]
 
-    static let fallback = NetheraWidgetSnapshot(
-        unknownDevices: 1,
-        protectedDevices: 5,
+    static let empty = NetheraWidgetSnapshot(
+        unknownDevices: 0,
+        protectedDevices: 0,
         blockedThreats: 0,
-        networkLoad: 70,
-        lastScan: "vor acht Minuten",
-        nextNetworkAction: "Unbekanntes Gerät prüfen",
-        guestNetworkName: "Nethera Guest",
-        guestPassword: "In der App speichern",
-        guestTimeLeft: "Gastzugang aus den Einstellungen",
-        childName: "Kind",
-        screenTimeLeft: "Kein Zeitlimit aktiv",
+        networkLoad: 0,
+        lastScan: "Noch nicht synchronisiert",
+        nextNetworkAction: "App öffnen und Backend synchronisieren",
+        guestNetworkName: "Nicht gespeichert",
+        guestPassword: "Nicht gespeichert",
+        guestTimeLeft: "Kein Gastzugang gespeichert",
+        childName: "Kein Kind",
+        screenTimeLeft: "Kein Preset aktiv",
         focusStartsAt: "Keine Fokuszeit geplant",
         activePreset: "Kein Preset aktiv",
-        familyAction: "In der App ein Preset aktivieren"
+        familyAction: "Kein Geräte-Preset aktiv",
+        childCards: []
     )
+}
+
+struct NetheraChildWidgetSnapshot: Codable {
+    let childName: String
+    let screenTimeLeft: String
+    let focusStartsAt: String
+    let activePreset: String
+    let familyAction: String
 }
 
 enum NetheraWidgetDataStore {
     private static let appGroupID = "group.NicoHofer.Nethera"
     private static let snapshotKey = "widgets.snapshot"
+    private static let childIndexKey = "widgets.currentChildIndex"
 
     // liest die daten, die die app für die widgets gespeichert hat:
     static func loadSnapshot() -> NetheraWidgetSnapshot {
         guard let data = UserDefaults(suiteName: appGroupID)?.data(forKey: snapshotKey),
               let snapshot = try? JSONDecoder().decode(NetheraWidgetSnapshot.self, from: data) else {
-            return .fallback
+            return .empty
         }
         return snapshot
+    }
+
+    // aktuelles kind fuer die kinderuebersicht:
+    static func currentChildIndex(for snapshot: NetheraWidgetSnapshot) -> Int {
+        let count = max(1, snapshot.childCards.count)
+        let value = UserDefaults(suiteName: appGroupID)?.integer(forKey: childIndexKey) ?? 0
+        return ((value % count) + count) % count
+    }
+
+    // wechselt das kind direkt ueber widget-buttons:
+    static func switchChild(by offset: Int) {
+        let snapshot = loadSnapshot()
+        let count = max(1, snapshot.childCards.count)
+        let current = currentChildIndex(for: snapshot)
+        let next = ((current + offset) % count + count) % count
+        UserDefaults(suiteName: appGroupID)?.set(next, forKey: childIndexKey)
+        WidgetCenter.shared.reloadTimelines(ofKind: "NetheraFamilyFocusWidget")
+    }
+}
+
+struct NetheraPreviousChildIntent: AppIntent {
+    static var title: LocalizedStringResource = "Vorheriges Kind"
+
+    func perform() async throws -> some IntentResult {
+        NetheraWidgetDataStore.switchChild(by: -1)
+        return .result()
+    }
+}
+
+struct NetheraNextChildIntent: AppIntent {
+    static var title: LocalizedStringResource = "Nächstes Kind"
+
+    func perform() async throws -> some IntentResult {
+        NetheraWidgetDataStore.switchChild(by: 1)
+        return .result()
     }
 }
 
 struct NetheraWidgetProvider: TimelineProvider {
     // platzhalter wenn iOS das widget in der galerie zeigt:
     func placeholder(in context: Context) -> NetheraWidgetEntry {
-        NetheraWidgetEntry(date: Date(), snapshot: .fallback)
+        NetheraWidgetEntry(date: Date(), snapshot: .empty, childIndex: 0)
     }
 
     // schneller einzelstand fuer previews und kurze aktualisierungen:
     func getSnapshot(in context: Context, completion: @escaping (NetheraWidgetEntry) -> Void) {
-        completion(NetheraWidgetEntry(date: Date(), snapshot: NetheraWidgetDataStore.loadSnapshot()))
+        let snapshot = NetheraWidgetDataStore.loadSnapshot()
+        completion(NetheraWidgetEntry(date: Date(), snapshot: snapshot, childIndex: NetheraWidgetDataStore.currentChildIndex(for: snapshot)))
     }
 
-    // timeline damit iOS die widget-daten regelmäßig neu laden kann:
+    // timeline bleibt stabil, gewechselt wird direkt ueber widget-buttons:
     func getTimeline(in context: Context, completion: @escaping (Timeline<NetheraWidgetEntry>) -> Void) {
         let now = Date()
-        let entries = (0..<6).compactMap { hourOffset in
-            Calendar.current.date(byAdding: .hour, value: hourOffset, to: now).map {
-                NetheraWidgetEntry(date: $0, snapshot: NetheraWidgetDataStore.loadSnapshot())
-            }
-        }
-        let refreshDate = Calendar.current.date(byAdding: .hour, value: 1, to: now) ?? now
-        completion(Timeline(entries: entries, policy: .after(refreshDate)))
+        let snapshot = NetheraWidgetDataStore.loadSnapshot()
+        let entry = NetheraWidgetEntry(date: now, snapshot: snapshot, childIndex: NetheraWidgetDataStore.currentChildIndex(for: snapshot))
+        let refreshDate = Calendar.current.date(byAdding: .minute, value: 30, to: now) ?? now
+        completion(Timeline(entries: [entry], policy: .after(refreshDate)))
     }
 }
 
@@ -138,8 +184,8 @@ struct NetheraFamilyFocusWidget: Widget {
         StaticConfiguration(kind: kind, provider: NetheraWidgetProvider()) { entry in
             NetheraFamilyFocusWidgetView(entry: entry)
         }
-        .configurationDisplayName("Nethera Familienruhe")
-        .description("Zeigt Restzeit, aktives Profil und die nächste Fokuszeit.")
+        .configurationDisplayName("Nethera Geräteübersicht")
+        .description("Zeigt aktives Profil und Fokuszeit pro ausgewähltem Gerät.")
         .supportedFamilies([.systemMedium])
         .contentMarginsDisabled()
     }
@@ -222,40 +268,147 @@ struct NetheraGuestAccessWidgetView: View {
 struct NetheraFamilyFocusWidgetView: View {
     let entry: NetheraWidgetEntry
 
+    private var currentIndex: Int {
+        guard !entry.snapshot.childCards.isEmpty else { return 0 }
+        return entry.childIndex % entry.snapshot.childCards.count
+    }
+
+    private var child: NetheraChildWidgetSnapshot {
+        guard !entry.snapshot.childCards.isEmpty else {
+            return NetheraChildWidgetSnapshot(
+                childName: entry.snapshot.childName,
+                screenTimeLeft: entry.snapshot.screenTimeLeft,
+                focusStartsAt: entry.snapshot.focusStartsAt,
+                activePreset: entry.snapshot.activePreset,
+                familyAction: entry.snapshot.familyAction
+            )
+        }
+
+        return entry.snapshot.childCards[currentIndex]
+    }
+
     var body: some View {
         NetheraWidgetBackground {
-            VStack(alignment: .leading, spacing: 10) {
-                HStack(alignment: .top, spacing: 12) {
-                    NetheraWidgetTitle(icon: "moon.zzz.fill", title: "Nethera Familienruhe")
-                    Spacer(minLength: 0)
-                    NetheraStatusLabel(text: entry.snapshot.activePreset, tint: NetheraWidgetColor.cyan)
+            HStack(spacing: 8) {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 9) {
+                        Image(systemName: "person.crop.circle.fill")
+                            .font(.system(size: 20, weight: .black))
+                            .foregroundStyle(.black)
+                            .frame(width: 30, height: 30)
+                            .background(NetheraWidgetColor.cyan)
+                            .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                        VStack(alignment: .leading, spacing: 1) {
+                            Text(child.childName)
+                                .font(.system(size: 21, weight: .black, design: .rounded))
+                                .foregroundStyle(NetheraWidgetColor.text)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.70)
+
+                            Text("Nethera Geräteübersicht")
+                                .font(.system(size: 10, weight: .black))
+                                .foregroundStyle(NetheraWidgetColor.muted)
+                                .lineLimit(1)
+                        }
+
+                        Spacer(minLength: 0)
+                    }
+
+                    HStack(spacing: 8) {
+                        NetheraChildMainCard(child: child)
+
+                        VStack(spacing: 7) {
+                            NetheraCompactMetric(
+                                value: child.presetStatusText,
+                                label: "Aktives Preset",
+                                icon: "shield.lefthalf.filled"
+                            )
+                            NetheraCompactMetric(
+                                value: child.focusStartsAt,
+                                label: "Fokuszeit",
+                                icon: "moon.fill"
+                            )
+                        }
+                        .frame(width: 124)
+                    }
                 }
 
-                HStack(spacing: 10) {
-                    NetheraActionCard(
-                        icon: "hand.raised.fill",
-                        title: "\(entry.snapshot.childName) heute",
-                        text: entry.snapshot.familyAction,
-                        tint: NetheraWidgetColor.yellow
+                if entry.snapshot.childCards.count > 1 {
+                    NetheraChildPagerRail(
+                        currentIndex: currentIndex,
+                        count: entry.snapshot.childCards.count
                     )
-
-                    VStack(spacing: 8) {
-                        NetheraStackMetric(
-                            value: entry.snapshot.screenTimeLeft,
-                            label: "Bildschirmzeit übrig",
-                            icon: "clock.fill"
-                        )
-                        NetheraStackMetric(
-                            value: entry.snapshot.focusStartsAt,
-                            label: "Nächste Fokuszeit",
-                            icon: "moon.fill"
-                        )
-                    }
-                    .frame(width: 132)
+                    .frame(width: 24)
                 }
             }
         }
         .widgetURL(URL(string: "nethera://presets"))
+    }
+}
+
+struct NetheraChildMainCard: View {
+    let child: NetheraChildWidgetSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 7) {
+            HStack(spacing: 7) {
+                Image(systemName: "info.circle.fill")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(.black)
+                    .frame(width: 22, height: 22)
+                    .background(NetheraWidgetColor.cyan)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+
+                Text("Infos")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.62)
+            }
+
+            Text(child.infoText)
+                .font(.system(size: 16, weight: .black, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(3)
+                .minimumScaleFactor(0.54)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
+        .padding(12)
+        .background(
+            LinearGradient(
+                colors: [NetheraWidgetColor.card, Color.white.opacity(0.055)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(NetheraWidgetColor.line, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+extension NetheraChildWidgetSnapshot {
+    var presetStatusText: String {
+        if activePreset.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+            return "Kein Preset aktiv"
+        }
+        if activePreset.contains("Kein Preset") || activePreset.contains(": aktiv") {
+            return activePreset
+        }
+        return "\(activePreset): aktiv"
+    }
+
+    var infoText: String {
+        if familyAction.contains("bleibt blockiert") || familyAction.contains("Domains") {
+            return "Anfrage auf verbotene Seite blockiert"
+        }
+        return familyAction
     }
 }
 
@@ -278,9 +431,9 @@ struct NetheraWidgetBackground<Content: View>: View {
             }
 
             content
-                .padding(.horizontal, 13)
-                .padding(.top, 12)
-                .padding(.bottom, 11)
+                .padding(.horizontal, 15)
+                .padding(.top, 13)
+                .padding(.bottom, 12)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .containerBackground(for: .widget) {
@@ -328,6 +481,88 @@ struct NetheraStatusLabel: View {
     }
 }
 
+struct NetheraChildSwitchControls: View {
+    var body: some View {
+        HStack(spacing: 5) {
+            Button(intent: NetheraPreviousChildIntent()) {
+                Image(systemName: "chevron.left")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.text)
+                    .frame(width: 24, height: 24)
+                    .background(NetheraWidgetColor.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Button(intent: NetheraNextChildIntent()) {
+                Image(systemName: "chevron.right")
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.text)
+                    .frame(width: 24, height: 24)
+                    .background(NetheraWidgetColor.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+struct NetheraChildPagerRail: View {
+    let currentIndex: Int
+    let count: Int
+
+    private var visibleDots: Int {
+        min(count, 5)
+    }
+
+    var body: some View {
+        VStack(spacing: 5) {
+            Button(intent: NetheraPreviousChildIntent()) {
+                Image(systemName: "chevron.up")
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.text)
+                    .frame(width: 22, height: 20)
+                    .background(NetheraWidgetColor.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+
+            Spacer(minLength: 0)
+
+            VStack(spacing: 5) {
+                ForEach(0..<visibleDots, id: \.self) { index in
+                    Circle()
+                        .fill(dotColor(for: index))
+                        .frame(width: index == currentDot ? 7 : 6, height: index == currentDot ? 7 : 6)
+                }
+            }
+
+            Spacer(minLength: 0)
+
+            Button(intent: NetheraNextChildIntent()) {
+                Image(systemName: "chevron.down")
+                    .font(.system(size: 9, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.text)
+                    .frame(width: 22, height: 20)
+                    .background(NetheraWidgetColor.card)
+                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            }
+            .buttonStyle(.plain)
+        }
+        .frame(maxHeight: .infinity)
+    }
+
+    private var currentDot: Int {
+        guard count > visibleDots else { return currentIndex }
+        let position = (Double(currentIndex) / Double(max(1, count - 1))) * Double(visibleDots - 1)
+        return min(visibleDots - 1, Int(position.rounded()))
+    }
+
+    private func dotColor(for index: Int) -> Color {
+        index == currentDot ? NetheraWidgetColor.text : NetheraWidgetColor.text.opacity(0.34)
+    }
+}
+
 struct NetheraActionCard: View {
     let icon: String
     let title: String
@@ -352,15 +587,15 @@ struct NetheraActionCard: View {
             }
 
             Text(text)
-                .font(.system(size: 18, weight: .black, design: .rounded))
+                .font(.system(size: 17, weight: .black, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
-                .lineLimit(2)
-                .minimumScaleFactor(0.68)
+                .lineLimit(3)
+                .minimumScaleFactor(0.56)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, minHeight: 88, alignment: .topLeading)
+        .frame(maxWidth: .infinity, minHeight: 86, alignment: .topLeading)
         .padding(11)
         .background(NetheraWidgetColor.card)
         .overlay {
@@ -390,15 +625,53 @@ struct NetheraStackMetric: View {
             }
 
             Text(value)
-                .font(.system(size: 15, weight: .black, design: .rounded))
+                .font(.system(size: 14, weight: .black, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(2)
-                .minimumScaleFactor(0.58)
+                .minimumScaleFactor(0.50)
+        }
+        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
+        .padding(.horizontal, 8)
+        .padding(.vertical, 6)
+        .background(NetheraWidgetColor.card)
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct NetheraCompactMetric: View {
+    let value: String
+    let label: String
+    let icon: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.cyan)
+
+                Text(label)
+                    .font(.system(size: 10, weight: .black))
+                    .foregroundStyle(NetheraWidgetColor.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.60)
+            }
+
+            Text(value)
+                .font(.system(size: 14, weight: .black, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(2)
+                .minimumScaleFactor(0.48)
+                .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
-        .padding(.horizontal, 9)
+        .padding(.horizontal, 10)
         .padding(.vertical, 7)
         .background(NetheraWidgetColor.card)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(NetheraWidgetColor.line.opacity(0.75), lineWidth: 1)
+        }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }

@@ -129,6 +129,7 @@ struct DeviceDetailView: View {
     @State private var endTime = Date()
     @State private var deviceBlocklist = BlocklistProfile()
     @State private var hasOwnBlocklist = false
+    @State private var activePresetID: UUID?
 
     @State private var showCreatePresetSheet = false
     @State private var presetToEdit: DevicePreset?
@@ -143,7 +144,7 @@ struct DeviceDetailView: View {
     }
 
     private var groupBlocklist: BlocklistProfile {
-        NetheraStorage.groupBlocklist(for: device.group)
+        NetheraBackend.groupBlocklist(for: device.group)
     }
 
     // je nach dem ob eigene blocklist, device oder group nehmen:
@@ -153,12 +154,14 @@ struct DeviceDetailView: View {
     }
 
     private var activeDevicePreset: DevicePreset? {
-        presets.first { isActivePreset($0) }
+        guard let activePresetID else { return nil }
+        return presets.first { $0.id == activePresetID }
     }
 
     // aktuelle settings:
     private var currentSettings: DeviceSettings {
         DeviceSettings(
+            activePresetID: activePresetID,
             parentalControl: parentalControl,
             prioritized: prioritized,
             timeLimitEnabled: timeLimitEnabled,
@@ -381,12 +384,9 @@ struct DeviceDetailView: View {
                 VStack(spacing: 10) {
                     ForEach(presets) { preset in
                         Button {
-                            applyPreset(preset)
+                            togglePreset(preset, enabled: !isActivePreset(preset))
                         } label: {
                             HStack(spacing: 12) {
-                                Image(systemName: isActivePreset(preset) ? "checkmark.circle.fill" : "circle")
-                                    .foregroundColor(isActivePreset(preset) ? .cyan : .white.opacity(0.55))
-
                                 VStack(alignment: .leading, spacing: 4) {
                                     Text(preset.name)
                                         .font(.headline)
@@ -400,7 +400,7 @@ struct DeviceDetailView: View {
 
                                 Spacer()
 
-                                Text(isActivePreset(preset) ? "Aktiv" : "Anwenden")
+                                Text(isActivePreset(preset) ? "Deaktivieren" : "Anwenden")
                                     .font(.caption.weight(.semibold))
                                     .foregroundColor(isActivePreset(preset) ? .cyan : .black)
                                     .padding(.horizontal, 10)
@@ -545,7 +545,7 @@ struct DeviceDetailView: View {
 
         return HStack(alignment: .top, spacing: 14) {
             Button {
-                applyPreset(preset)
+                togglePreset(preset, enabled: !isActivePreset(preset))
             } label: {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 8) {
@@ -590,7 +590,7 @@ struct DeviceDetailView: View {
 
             VStack(spacing: 12) {
                 Toggle("", isOn: Binding(
-                    get: { presets.first(where: { $0.id == preset.id })?.isEnabled ?? false },
+                    get: { isActivePreset(preset) },
                     set: { togglePreset(preset, enabled: $0) }
                 ))
                 .toggleStyle(SwitchToggleStyle(tint: .cyan))
@@ -665,7 +665,7 @@ struct DeviceDetailView: View {
     }
 
     private func isActivePreset(_ preset: DevicePreset) -> Bool {
-        presets.first(where: { $0.id == preset.id })?.isEnabled ?? preset.isEnabled
+        activePresetID == preset.id
     }
 
     private var cardBackground: some View {
@@ -679,7 +679,8 @@ struct DeviceDetailView: View {
 
     // speichern und loaden:
     private func loadSettings() {
-        let settings = NetheraStorage.deviceSettings(for: device.id)
+        let settings = NetheraBackend.deviceSettings(for: device.id)
+        activePresetID = settings.activePresetID
         parentalControl = settings.parentalControl
         prioritized = settings.prioritized
         timeLimitEnabled = settings.timeLimitEnabled
@@ -690,25 +691,19 @@ struct DeviceDetailView: View {
     }
 
     private func persistSettings() {
-        NetheraStorage.saveDeviceSettings(currentSettings, for: device.id)
+        NetheraBackend.saveDeviceSettings(currentSettings, for: device.id)
     }
 
     private func refreshPresets() {
-        let cleaned = normalizedPresets(NetheraStorage.loadPresets())
-        NetheraStorage.savePresets(cleaned)
-        presets = cleaned
+        presets = deduplicatedPresets(NetheraBackend.loadPresets())
     }
 
     private func saveCurrentAsPreset(named name: String) {
-        var existing = NetheraStorage.loadPresets().map { preset in
-            var copy = preset
-            copy.isEnabled = false
-            return copy
-        }
+        var existing = deduplicatedPresets(NetheraBackend.loadPresets())
 
         let newPreset = DevicePreset(
             name: name,
-            isEnabled: true,
+            isEnabled: false,
             group: nil,
             parentalControl: parentalControl,
             prioritized: prioritized,
@@ -719,12 +714,14 @@ struct DeviceDetailView: View {
         )
 
         existing.insert(newPreset, at: 0)
-        NetheraStorage.savePresets(existing)
+        NetheraBackend.savePresets(existing)
         presets = existing
+        activePresetID = newPreset.id
+        persistSettings()
     }
 
     private func updatePreset(_ preset: DevicePreset, withName newName: String) {
-        var existing = NetheraStorage.loadPresets()
+        var existing = NetheraBackend.loadPresets()
         guard let index = existing.firstIndex(where: { $0.id == preset.id }) else { return }
 
         existing[index].name = newName
@@ -736,7 +733,7 @@ struct DeviceDetailView: View {
         existing[index].endTime = endTime
         existing[index].blocklist = effectiveBlocklist
 
-        NetheraStorage.savePresets(existing)
+        NetheraBackend.savePresets(existing)
         presets = existing
     }
 
@@ -745,12 +742,7 @@ struct DeviceDetailView: View {
             activatePreset(preset)
         } else if isActivePreset(preset) {
             resetToGroupBlocklist()
-            setOnlyPreset(preset, enabled: false)
         }
-    }
-
-    private func applyPreset(_ preset: DevicePreset) {
-        activatePreset(preset)
     }
 
     private func activatePreset(_ preset: DevicePreset) {
@@ -761,34 +753,14 @@ struct DeviceDetailView: View {
         endTime = preset.endTime
         deviceBlocklist = preset.blocklist
         hasOwnBlocklist = true
+        activePresetID = preset.id
         persistSettings()
-        setOnlyPreset(preset, enabled: true)
     }
 
-    private func setOnlyPreset(_ preset: DevicePreset, enabled: Bool) {
-        var existing = NetheraStorage.loadPresets()
-        existing = existing.map { item in
-            var copy = item
-            copy.isEnabled = enabled && item.id == preset.id
-            return copy
-        }
-        existing = normalizedPresets(existing)
-        NetheraStorage.savePresets(existing)
-        presets = existing
-    }
-
-    private func normalizedPresets(_ input: [DevicePreset]) -> [DevicePreset] {
-        var didKeepActivePreset = false
-        return input.map { item in
-            var copy = item
-            if copy.isEnabled {
-                if didKeepActivePreset {
-                    copy.isEnabled = false
-                } else {
-                    didKeepActivePreset = true
-                }
-            }
-            return copy
+    private func deduplicatedPresets(_ input: [DevicePreset]) -> [DevicePreset] {
+        var seen = Set<UUID>()
+        return input.filter { preset in
+            seen.insert(preset.id).inserted
         }
     }
 
@@ -802,14 +774,21 @@ struct DeviceDetailView: View {
         endTime = Date()
         deviceBlocklist = BlocklistProfile()
         hasOwnBlocklist = false
+        activePresetID = nil
         persistSettings()
         refreshGroupBlocklistToken = UUID()
     }
 
     private func deletePreset(_ preset: DevicePreset) {
-        var existing = NetheraStorage.loadPresets()
+        var existing = NetheraBackend.loadPresets()
         existing.removeAll { $0.id == preset.id }
-        NetheraStorage.savePresets(existing)
+        NetheraBackend.savePresets(existing)
+
+        if activePresetID == preset.id {
+            activePresetID = nil
+            persistSettings()
+        }
+
         withAnimation {
             presets = existing
         }

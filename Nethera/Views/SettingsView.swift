@@ -12,23 +12,23 @@ struct SettingsView: View {
     @StateObject private var authentication = AuthenticationManager()
     @StateObject private var notificationManager = NotificationManager.shared
     
-    @State private var wifiName = "Nethera"
-    @State private var password = "27N!G?4"
-    @State private var guestPassword = "0N-Gast0"
+    @State private var wifiName = ""
+    @State private var password = ""
+    @State private var guestPassword = ""
     
-    @State private var notifications = true
-    @State private var darkMode = true
+    @State private var notifications = false
+    @State private var darkMode = false
     
-    @State private var frequency = "5 GHz"
-    @State private var firewall = true
+    @State private var frequency = ""
+    @State private var firewall = false
 
-    @State private var savedWifiName = "Nethera"
-    @State private var savedPassword = "27N!G?4"
-    @State private var savedGuestPassword = "0N-Gast0"
-    @State private var savedNotifications = true
-    @State private var savedDarkMode = true
-    @State private var savedFrequency = "5 GHz"
-    @State private var savedFirewall = true
+    @State private var savedWifiName = ""
+    @State private var savedPassword = ""
+    @State private var savedGuestPassword = ""
+    @State private var savedNotifications = false
+    @State private var savedDarkMode = false
+    @State private var savedFrequency = ""
+    @State private var savedFirewall = false
     @State private var showSavedMessage = false
     @State private var qrImage: UIImage?
     @State private var notificationDebugTapCount = 0
@@ -164,6 +164,10 @@ struct SettingsView: View {
         .onChange(of: guestPassword) {
             makeGuestQRCode()
         }
+        .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+            loadSettings()
+            makeGuestQRCode()
+        }
     }
 
     private var settingsBackground: some View {
@@ -197,16 +201,19 @@ struct SettingsView: View {
     func saveSettings() {
         let wasFirewallEnabled = savedFirewall
 
-        UserDefaults.standard.set(wifiName, forKey: "router.wifiName")
-        UserDefaults.standard.set(password, forKey: "router.password")
-        UserDefaults.standard.set(guestPassword, forKey: "router.guestPassword")
-        UserDefaults.standard.set(notifications, forKey: "router.notifications")
-        UserDefaults.standard.set(darkMode, forKey: "router.darkMode")
-        UserDefaults.standard.set(frequency, forKey: "router.frequency")
-        UserDefaults.standard.set(firewall, forKey: "router.firewall")
+        let settings = NetheraBackend.RouterSettings(
+            wifiName: wifiName,
+            password: password,
+            guestPassword: guestPassword,
+            notifications: notifications,
+            darkMode: darkMode,
+            frequency: frequency,
+            firewall: firewall
+        )
+
+        NetheraBackend.saveRouterSettings(settings)
         notificationManager.automaticWarningsEnabled = notifications
         notificationManager.handleFirewallChange(wasEnabled: wasFirewallEnabled, isEnabled: firewall)
-        NetheraWidgetDataStore.syncSnapshot()
 
         savedWifiName = wifiName
         savedPassword = password
@@ -234,18 +241,15 @@ struct SettingsView: View {
     }
 
     func loadSettings() {
-        let loadedWifiName = UserDefaults.standard.string(forKey: "router.wifiName") ?? wifiName
-        let loadedPassword = UserDefaults.standard.string(forKey: "router.password") ?? password
-        let loadedGuestPassword = UserDefaults.standard.string(forKey: "router.guestPassword") ?? guestPassword
-        let loadedFrequency = UserDefaults.standard.string(forKey: "router.frequency") ?? frequency
+        let settings = NetheraBackend.loadRouterSettings()
 
-        wifiName = loadedWifiName
-        password = loadedPassword
-        guestPassword = loadedGuestPassword
-        notifications = UserDefaults.standard.object(forKey: "router.notifications") as? Bool ?? notifications
-        darkMode = UserDefaults.standard.object(forKey: "router.darkMode") as? Bool ?? darkMode
-        frequency = loadedFrequency
-        firewall = UserDefaults.standard.object(forKey: "router.firewall") as? Bool ?? firewall
+        wifiName = settings.wifiName
+        password = settings.password
+        guestPassword = settings.guestPassword
+        notifications = settings.notifications
+        darkMode = settings.darkMode
+        frequency = settings.frequency
+        firewall = settings.firewall
 
         savedWifiName = wifiName
         savedPassword = password
