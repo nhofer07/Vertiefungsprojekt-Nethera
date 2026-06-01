@@ -290,24 +290,24 @@ struct NetheraFamilyFocusWidgetView: View {
     var body: some View {
         NetheraWidgetBackground {
             HStack(spacing: 8) {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(spacing: 9) {
+                VStack(alignment: .leading, spacing: 6) {
+                    HStack(spacing: 8) {
                         Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 20, weight: .black))
+                            .font(.system(size: 18, weight: .black))
                             .foregroundStyle(.black)
-                            .frame(width: 30, height: 30)
+                            .frame(width: 28, height: 28)
                             .background(NetheraWidgetColor.cyan)
                             .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text(child.childName)
-                                .font(.system(size: 21, weight: .black, design: .rounded))
+                                .font(.system(size: 19, weight: .black, design: .rounded))
                                 .foregroundStyle(NetheraWidgetColor.text)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.70)
 
                             Text("Nethera Geräteübersicht")
-                                .font(.system(size: 10, weight: .black))
+                                .font(.system(size: 9, weight: .black))
                                 .foregroundStyle(NetheraWidgetColor.muted)
                                 .lineLimit(1)
                         }
@@ -318,7 +318,7 @@ struct NetheraFamilyFocusWidgetView: View {
                     HStack(spacing: 8) {
                         NetheraChildMainCard(child: child)
 
-                        VStack(spacing: 7) {
+                        VStack(spacing: 5) {
                             NetheraCompactMetric(
                                 value: child.presetStatusText,
                                 label: "Aktives Preset",
@@ -330,7 +330,7 @@ struct NetheraFamilyFocusWidgetView: View {
                                 icon: "moon.fill"
                             )
                         }
-                        .frame(width: 124)
+                        .frame(width: 118)
                     }
                 }
 
@@ -339,7 +339,7 @@ struct NetheraFamilyFocusWidgetView: View {
                         currentIndex: currentIndex,
                         count: entry.snapshot.childCards.count
                     )
-                    .frame(width: 24)
+                    .frame(width: 22)
                 }
             }
         }
@@ -376,8 +376,8 @@ struct NetheraChildMainCard: View {
 
             Spacer(minLength: 0)
         }
-        .frame(maxWidth: .infinity, minHeight: 84, alignment: .topLeading)
-        .padding(12)
+        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+        .padding(10)
         .background(
             LinearGradient(
                 colors: [NetheraWidgetColor.card, Color.white.opacity(0.055)],
@@ -431,9 +431,9 @@ struct NetheraWidgetBackground<Content: View>: View {
             }
 
             content
-                .padding(.horizontal, 15)
-                .padding(.top, 13)
-                .padding(.bottom, 12)
+                .padding(.horizontal, 20)
+                .padding(.top, 17)
+                .padding(.bottom, 16)
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
         .containerBackground(for: .widget) {
@@ -521,7 +521,7 @@ struct NetheraChildPagerRail: View {
                 Image(systemName: "chevron.up")
                     .font(.system(size: 9, weight: .black))
                     .foregroundStyle(NetheraWidgetColor.text)
-                    .frame(width: 22, height: 20)
+                    .frame(width: 22, height: 18)
                     .background(NetheraWidgetColor.card)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             }
@@ -543,7 +543,7 @@ struct NetheraChildPagerRail: View {
                 Image(systemName: "chevron.down")
                     .font(.system(size: 9, weight: .black))
                     .foregroundStyle(NetheraWidgetColor.text)
-                    .frame(width: 22, height: 20)
+                    .frame(width: 22, height: 18)
                     .background(NetheraWidgetColor.card)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
             }
@@ -664,9 +664,9 @@ struct NetheraCompactMetric: View {
                 .minimumScaleFactor(0.48)
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .frame(maxWidth: .infinity, minHeight: 42, alignment: .leading)
-        .padding(.horizontal, 10)
-        .padding(.vertical, 7)
+        .frame(maxWidth: .infinity, minHeight: 36, alignment: .leading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 5)
         .background(NetheraWidgetColor.card)
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)

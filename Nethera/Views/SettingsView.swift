@@ -21,6 +21,7 @@ struct SettingsView: View {
     
     @State private var frequency = ""
     @State private var firewall = false
+    @State private var backendURL = ""
 
     @State private var savedWifiName = ""
     @State private var savedPassword = ""
@@ -29,6 +30,7 @@ struct SettingsView: View {
     @State private var savedDarkMode = false
     @State private var savedFrequency = ""
     @State private var savedFirewall = false
+    @State private var savedBackendURL = ""
     @State private var showSavedMessage = false
     @State private var qrImage: UIImage?
     @State private var notificationDebugTapCount = 0
@@ -44,7 +46,8 @@ struct SettingsView: View {
         notifications != savedNotifications ||
         darkMode != savedDarkMode ||
         frequency != savedFrequency ||
-        firewall != savedFirewall
+        firewall != savedFirewall ||
+        backendURL != savedBackendURL
     }
     
     var body: some View {
@@ -133,6 +136,7 @@ struct SettingsView: View {
                                 
                                 PickerRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", selection: $frequency, options: ["2.4 GHz", "5 GHz", "Auto"])
                                 ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
+                                EditableTextRow(icon: "server.rack", label: "Backend", text: $backendURL)
                                 
                                 SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: true)
                                 SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: true)
@@ -211,6 +215,7 @@ struct SettingsView: View {
             firewall: firewall
         )
 
+        NetheraBackend.saveBackendBaseURL(backendURL)
         NetheraBackend.saveRouterSettings(settings)
         notificationManager.automaticWarningsEnabled = notifications
         notificationManager.handleFirewallChange(wasEnabled: wasFirewallEnabled, isEnabled: firewall)
@@ -222,6 +227,7 @@ struct SettingsView: View {
         savedDarkMode = darkMode
         savedFrequency = frequency
         savedFirewall = firewall
+        savedBackendURL = backendURL
 
         showSavedMessage = true
 
@@ -234,6 +240,7 @@ struct SettingsView: View {
         print("Darkmode: \(darkMode)")
         print("Frequenz: \(frequency)")
         print("Firewall: \(firewall)")
+        print("Backend: \(backendURL)")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             showSavedMessage = false
@@ -250,6 +257,7 @@ struct SettingsView: View {
         darkMode = settings.darkMode
         frequency = settings.frequency
         firewall = settings.firewall
+        backendURL = NetheraBackend.currentBackendBaseURL()
 
         savedWifiName = wifiName
         savedPassword = password
@@ -258,6 +266,7 @@ struct SettingsView: View {
         savedDarkMode = darkMode
         savedFrequency = frequency
         savedFirewall = firewall
+        savedBackendURL = backendURL
         notificationManager.automaticWarningsEnabled = notifications
     }
 

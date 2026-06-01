@@ -482,6 +482,7 @@ struct DevicesView: View {
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
         .onAppear {
+            NetheraBackend.refreshFromMongoDB()
             reloadFromBackend()
             if NetheraBackend.isDatabaseAvailable() {
                 ensureFallbackGroupExists()
@@ -610,6 +611,20 @@ struct DevicesView: View {
                     .font(.footnote)
                     .foregroundColor(.white.opacity(0.68))
                     .fixedSize(horizontal: false, vertical: true)
+
+                Button {
+                    NetheraBackend.refreshFromMongoDB()
+                } label: {
+                    Label("Erneut verbinden", systemImage: "arrow.clockwise")
+                        .font(.footnote.weight(.semibold))
+                        .foregroundColor(.black)
+                        .padding(.horizontal, 12)
+                        .padding(.vertical, 8)
+                        .background(Color.cyan)
+                        .clipShape(Capsule())
+                }
+                .buttonStyle(.plain)
+                .padding(.top, 4)
             }
 
             Spacer()

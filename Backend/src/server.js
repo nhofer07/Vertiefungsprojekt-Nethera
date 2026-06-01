@@ -67,10 +67,46 @@ async function loadRouterSettings(db) {
   return meta?.value ?? null;
 }
 
+async function loadGlobalBlocklist(db) {
+  const blocklist = await db.collection("globalBlocklist").findOne({ key: "main" }, { projection: { _id: 0 } });
+  return blocklist?.profile ?? {
+    gamblingEnabled: false,
+    adultEnabled: false,
+    socialEnabled: false,
+    manualDomains: []
+  };
+}
+
+async function loadAdBlockDomains(db) {
+  const adBlock = await db.collection("adBlockDomains").findOne({ key: "main" }, { projection: { _id: 0 } });
+  return adBlock?.domains ?? [
+    { id: crypto.randomUUID(), name: "googleads.g.doubleclick.net", time: "2m" },
+    { id: crypto.randomUUID(), name: "connect.facebook.com", time: "4m" },
+    { id: crypto.randomUUID(), name: "stats.g.doubleclick.net", time: "17m" },
+    { id: crypto.randomUUID(), name: "adservice.google.com", time: "29m" }
+  ];
+}
+
 async function saveRouterSettings(db, routerSettings) {
   await db.collection("routerSettings").updateOne(
     { key: "main" },
     { $set: { key: "main", ...routerSettings } },
+    { upsert: true }
+  );
+}
+
+async function saveGlobalBlocklist(db, profile) {
+  await db.collection("globalBlocklist").updateOne(
+    { key: "main" },
+    { $set: { key: "main", profile } },
+    { upsert: true }
+  );
+}
+
+async function saveAdBlockDomains(db, domains) {
+  await db.collection("adBlockDomains").updateOne(
+    { key: "main" },
+    { $set: { key: "main", domains } },
     { upsert: true }
   );
 }
@@ -127,10 +163,12 @@ app.get("/health", asyncRoute(async (_request, response) => {
 
 app.get("/api/state", asyncRoute(async (_request, response) => {
   const db = await getDb();
-  const [devices, groups, routerSettings, deviceSettings, presets, groupBlocklists] = await Promise.all([
+  const [devices, groups, routerSettings, globalBlocklist, adBlockDomains, deviceSettings, presets, groupBlocklists] = await Promise.all([
     db.collection("devices").find({}, { projection: { _id: 0 } }).toArray(),
     loadGroups(db),
     loadRouterSettings(db),
+    loadGlobalBlocklist(db),
+    loadAdBlockDomains(db),
     db.collection("deviceSettings").find({}, { projection: { _id: 0 } }).toArray(),
     db.collection("presets").find({}, { projection: { _id: 0 } }).toArray(),
     db.collection("groupBlocklists").find({}, { projection: { _id: 0 } }).toArray()
@@ -142,6 +180,8 @@ app.get("/api/state", asyncRoute(async (_request, response) => {
     deviceSettings: Object.fromEntries(deviceSettings.map((item) => [item.deviceID, item.settings])),
     presets,
     groupBlocklists: Object.fromEntries(groupBlocklists.map((item) => [item.group, item.profile])),
+    globalBlocklist,
+    adBlockDomains,
     routerSettings
   });
 }));
@@ -174,6 +214,20 @@ app.put("/api/router-settings", asyncRoute(async (request, response) => {
   const db = await getDb();
   await saveRouterSettings(db, routerSettings);
   response.json({ ok: true });
+}));
+
+app.put("/api/global-blocklist", asyncRoute(async (request, response) => {
+  const profile = request.body?.profile ?? {};
+  const db = await getDb();
+  await saveGlobalBlocklist(db, profile);
+  response.json({ ok: true });
+}));
+
+app.put("/api/adblock-domains", asyncRoute(async (request, response) => {
+  const domains = Array.isArray(request.body?.domains) ? request.body.domains : [];
+  const db = await getDb();
+  await saveAdBlockDomains(db, domains);
+  response.json({ ok: true, count: domains.length });
 }));
 
 app.put("/api/device-settings/:deviceID", asyncRoute(async (request, response) => {

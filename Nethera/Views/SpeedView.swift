@@ -1,63 +1,88 @@
 import SwiftUI
 
 struct SpeedView: View {
-    
-    var body: some View {
-        
-        @State var buttonPressed = false
-        
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.08, green: 0.18, blue: 0.22),
-                    Color(red: 0.02, green: 0.02, blue: 0.05)
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            
-            VStack {
-                PageHeaderView(title: "Geschwindigkeit", showBackButton: true)
-                
-                VStack(spacing: 25) {
-                    
-                    SpeedCard(value: "85.7 mb/s", label: "Download Geschwindigkeit")
-                    
-                    SpeedCard(value: "98.6 mb/s", label: "Upload Geschwindigkeit")
-                    
-                    SpeedCard(value: "72.2 mb/s", label: "ø Download")
-                    
+    @State private var buttonPressed = false
 
-                    Button {
-                        buttonPressed.toggle()
-                        print("Speedtest gestartet")
-                    } label: {
-                        Text("Geschwindigkeit testen")
-                            .font(.headline)
-                            .foregroundColor(.white)
-                            .frame(maxWidth: .infinity)
-                            .padding(.vertical, 15)
-                            .background(
-                                RoundedRectangle(cornerRadius: 25)
-                                    .fill(Color.blue.opacity(0.3))
-                                    .shadow(
-                                        color: Color.blue.opacity(buttonPressed ? 0.5 : 0.3),
-                                        radius: buttonPressed ? 12 : 6,
-                                        x: 0,
-                                        y: buttonPressed ? 6 : 4
-                                    )
-                            )
+    var body: some View {
+        NavigationStack {
+            ZStack {
+                speedBackground
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        PageHeaderView(title: "Geschwindigkeit", showBackButton: true, outerHorizontalPadding: 0)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Netzwerkleistung")
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+
+                            Text("Der Geschwindigkeitstest bezieht sich auf das gesamte Netzwerk.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.68))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .background(speedCardBackground)
+
+                        VStack(spacing: 12) {
+                            SpeedCard(value: "85.7 mb/s", label: "Download Geschwindigkeit")
+                            SpeedCard(value: "98.6 mb/s", label: "Upload Geschwindigkeit")
+                            SpeedCard(value: "72.2 mb/s", label: "ø Download")
+                        }
+
+                        Button {
+                            buttonPressed.toggle()
+                            print("Speedtest gestartet")
+                        } label: {
+                            Text("Geschwindigkeit testen")
+                                .font(.headline.weight(.semibold))
+                                .foregroundColor(.black)
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 15)
+                                .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+                                .shadow(
+                                    color: Color.black.opacity(buttonPressed ? 0.26 : 0.16),
+                                    radius: buttonPressed ? 12 : 8,
+                                    x: 0,
+                                    y: buttonPressed ? 7 : 5
+                                )
+                        }
+                        .buttonStyle(.plain)
+
+                        Spacer(minLength: 80)
                     }
-                    
-                    Spacer()
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 28)
                 }
-                .padding()
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-        
+    }
+
+    private var speedBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 0.04, green: 0.11, blue: 0.15),
+                Color(red: 0.03, green: 0.04, blue: 0.07),
+                Color.black
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+
+    private var speedCardBackground: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(Color.white.opacity(0.07))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 6)
     }
 }
 

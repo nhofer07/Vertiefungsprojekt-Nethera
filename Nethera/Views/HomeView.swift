@@ -3,11 +3,9 @@ import SwiftUI
 struct HomeView: View {
 
     @State private var animateContent = false
-
-    private let gridColumns = [
-        GridItem(.flexible(), spacing: 14),
-        GridItem(.flexible(), spacing: 14)
-    ]
+    @State private var devices: [Device] = NetheraBackend.loadDevices()
+    @State private var groups: [String] = NetheraBackend.loadGroups()
+    @State private var deviceSettings: [String: DeviceSettings] = NetheraBackend.allDeviceSettings()
 
     var body: some View {
         NavigationStack {
@@ -24,48 +22,35 @@ struct HomeView: View {
 
                             sectionHeader(
                                 title: "Schnellzugriff",
-                                subtitle: "Die wichtigsten Bereiche von Nethera"
+                                subtitle: "Diese Aktionen gelten für das gesamte Netzwerk."
                             )
                             .opacity(animateContent ? 1 : 0)
                             .offset(y: animateContent ? 0 : 12)
 
-                            LazyVGrid(columns: gridColumns, spacing: 14) {
+                            VStack(spacing: 10) {
                                 NavigationLink(destination: SpeedView()) {
-                                    shortcutCard(
+                                    shortcutRow(
                                         title: "Geschwindigkeit",
-                                        subtitle: "Verbindung prüfen",
-                                        symbol: "speedometer",
-                                        tint: Color(red: 0.35, green: 0.75, blue: 0.9)
-                                    )
-                                }
-                                .buttonStyle(.plain)
-
-                                NavigationLink(destination: ParentalControlView()) {
-                                    shortcutCard(
-                                        title: "Kindersicherung",
-                                        subtitle: "Geräte verwalten",
-                                        symbol: "lock.shield",
-                                        tint: Color(red: 0.45, green: 0.83, blue: 0.62)
+                                        subtitle: "Netzwerkleistung prüfen",
+                                        symbol: "speedometer"
                                     )
                                 }
                                 .buttonStyle(.plain)
 
                                 NavigationLink(destination: AdBlockDashboardView()) {
-                                    shortcutCard(
+                                    shortcutRow(
                                         title: "AdBlock",
-                                        subtitle: "Werbung filtern",
-                                        symbol: "shield.lefthalf.filled",
-                                        tint: Color(red: 0.95, green: 0.71, blue: 0.3)
+                                        subtitle: "Werbung und Tracking filtern",
+                                        symbol: "shield.lefthalf.filled"
                                     )
                                 }
                                 .buttonStyle(.plain)
 
                                 NavigationLink(destination: BlacklistDashboardView()) {
-                                    shortcutCard(
+                                    shortcutRow(
                                         title: "Blocklist",
-                                        subtitle: "Domains sperren",
-                                        symbol: "nosign",
-                                        tint: Color(red: 0.92, green: 0.45, blue: 0.52)
+                                        subtitle: "Gruppenregeln und Domains verwalten",
+                                        symbol: "nosign"
                                     )
                                 }
                                 .buttonStyle(.plain)
@@ -84,6 +69,11 @@ struct HomeView: View {
             }
             .onAppear {
                 animateContent = true
+                NetheraBackend.refreshFromMongoDB()
+                reloadDashboardMetrics()
+            }
+            .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+                reloadDashboardMetrics()
             }
         }
         .toolbar(.hidden, for: .navigationBar)
@@ -141,16 +131,26 @@ struct HomeView: View {
             }
 
             VStack(spacing: 10) {
-                compactMetric(value: "5", label: "Geräte mit dem Netz verbunden", isPrimary: true)
+                compactMetric(value: "\(devices.count)", label: "Verbundene Geräte", isPrimary: true)
 
                 HStack(spacing: 10) {
-                    compactMetric(value: "19h", label: "Internetnutzung \n diese Woche")
-                    compactMetric(value: "57 GB", label: "Datenverbrauch \n diese Woche")
+                    compactMetric(value: "\(groups.count)", label: "Gruppen \n verwaltet")
+                    compactMetric(value: "\(activePresetCount)", label: "Aktive Presets \n auf Geräten")
                 }
             }
         }
         .padding(18)
         .background(heroBackground)
+    }
+
+    private var activePresetCount: Int {
+        deviceSettings.values.filter { $0.activePresetID != nil }.count
+    }
+
+    private func reloadDashboardMetrics() {
+        devices = NetheraBackend.loadDevices()
+        groups = NetheraBackend.loadGroups()
+        deviceSettings = NetheraBackend.allDeviceSettings()
     }
 
 
@@ -270,23 +270,19 @@ struct HomeView: View {
                 .stroke(Color.white.opacity(0.07), lineWidth: 1)
         )
     }
-    
-    private func shortcutCard(title: String, subtitle: String, symbol: String, tint: Color) -> some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HStack {
-                Image(systemName: symbol)
-                    .font(.headline.weight(.semibold))
-                    .foregroundColor(.white)
-                    .frame(width: 38, height: 38)
-                    .background(tint.opacity(0.24))
-                    .clipShape(Circle())
 
-                Spacer()
-
-                Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
-                    .foregroundColor(.white.opacity(0.55))
-            }
+    private func shortcutRow(title: String, subtitle: String, symbol: String) -> some View {
+        HStack(spacing: 14) {
+            Image(systemName: symbol)
+                .font(.system(size: 18, weight: .semibold))
+                .foregroundColor(.white.opacity(0.88))
+                .frame(width: 42, height: 42)
+                .background(Color.white.opacity(0.075))
+                .clipShape(Circle())
+                .overlay(
+                    Circle()
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
 
             VStack(alignment: .leading, spacing: 5) {
                 Text(title)
@@ -296,25 +292,35 @@ struct HomeView: View {
                 Text(subtitle)
                     .font(.footnote)
                     .foregroundColor(.white.opacity(0.68))
+                    .lineLimit(2)
             }
+            .layoutPriority(1)
 
-            Spacer(minLength: 0)
+            Spacer()
+
+            Image(systemName: "chevron.right")
+                .font(.caption.weight(.bold))
+                .foregroundColor(.white.opacity(0.45))
         }
-        .frame(maxWidth: .infinity, minHeight: 128, alignment: .leading)
-        .padding(16)
-        .background(
-            LinearGradient(
-                colors: [tint.opacity(0.22), Color.white.opacity(0.06)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-        )
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .frame(maxWidth: .infinity, minHeight: 64, alignment: .leading)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 9)
+        .background(shortcutBackground)
         .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
+            RoundedRectangle(cornerRadius: 24, style: .continuous)
+                .stroke(
+                    LinearGradient(
+                        colors: [
+                            Color.white.opacity(0.10),
+                            Color.white.opacity(0.06)
+                        ],
+                        startPoint: .topLeading,
+                        endPoint: .bottomTrailing
+                    ),
+                    lineWidth: 1
+                )
         )
-        .shadow(color: Color.black.opacity(0.18), radius: 12, x: 0, y: 6)
+        .shadow(color: Color.black.opacity(0.16), radius: 10, x: 0, y: 5)
     }
 
     // card style für jede gruppe:
@@ -345,6 +351,20 @@ struct HomeView: View {
                     .stroke(Color.white.opacity(0.07), lineWidth: 1)
             )
             .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 6)
+    }
+
+    private var shortcutBackground: some View {
+        RoundedRectangle(cornerRadius: 24, style: .continuous)
+            .fill(
+                LinearGradient(
+                    colors: [
+                        Color.white.opacity(0.075),
+                        Color.white.opacity(0.045)
+                    ],
+                    startPoint: .topLeading,
+                    endPoint: .bottomTrailing
+                )
+            )
     }
 }
 

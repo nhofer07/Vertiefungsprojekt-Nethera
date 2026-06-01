@@ -1,27 +1,9 @@
-//
-//  AdBlockDashboardView.swift
-//  Nethera
-//
-//  Created by Deniz Bernecker on 08.03.26.
-//
-
-import Foundation
-
 import SwiftUI
 
 struct AdBlockDashboardView: View {
-    // dummydaten:
-    @State private var blockedDomains = [
-        BlockedDomain(name: "googleads.g.doubleclick.net", time: "2m"),
-        BlockedDomain(name: "connect.facebook.com", time: "4m"),
-        BlockedDomain(name: "stats.g.doubleclick.net", time: "17m"),
-        BlockedDomain(name: "adservice.google.com", time: "29m")
-    ]
-    
+    @State private var blockedDomains = NetheraBackend.adBlockDomains()
     @State private var newBlockedDomain = ""
 
-    
-    // neue domain holen:
     private func addBlockedDomain() {
         let sanitized = newBlockedDomain
             .trimmingCharacters(in: .whitespacesAndNewlines)
@@ -33,224 +15,246 @@ struct AdBlockDashboardView: View {
             return
         }
 
-        blockedDomains.insert(BlockedDomain(name: sanitized, time: "jetzt"), at: 0)
+        blockedDomains.insert(AdBlockDomain(name: sanitized, time: "jetzt"), at: 0)
         newBlockedDomain = ""
+        saveBlockedDomains()
     }
-    
+
+    private func deleteBlockedDomain(_ domain: AdBlockDomain) {
+        blockedDomains.removeAll { $0.id == domain.id }
+        saveBlockedDomains()
+    }
+
+    private func saveBlockedDomains() {
+        NetheraBackend.saveAdBlockDomains(blockedDomains)
+    }
+
+    private func reloadBlockedDomains() {
+        blockedDomains = NetheraBackend.adBlockDomains()
+    }
+
     var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: [
-                    Color(red: 0.05, green: 0.2, blue: 0.25),
-                    Color.black
-                ],
-                startPoint: .top,
-                endPoint: .bottom
-            )
-            .ignoresSafeArea()
-            
-            VStack(spacing: 10) {
-                PageHeaderView(title: "Geblockte Werbung", showBackButton: true)
-                
-                VStack(spacing: 20) {
-                    statsRow
-                    blockedDomainsCard
-                    SingleStatBoxCard
+        NavigationStack {
+            ZStack {
+                dashboardBackground
+
+                ScrollView(showsIndicators: false) {
+                    VStack(alignment: .leading, spacing: 18) {
+                        PageHeaderView(title: "Geblockte Werbung", showBackButton: true, outerHorizontalPadding: 0)
+
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("AdBlock")
+                                .font(.system(size: 30, weight: .bold, design: .rounded))
+                                .foregroundColor(.white)
+
+                            Text("Werbe- und Trackingfilter gelten für das gesamte Netzwerk.")
+                                .font(.subheadline)
+                                .foregroundColor(.white.opacity(0.68))
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(18)
+                        .background(dashboardCardBackground)
+
+                        statsRow
+                        blockedDomainsCard
+                        protectionCard
+
+                        Spacer(minLength: 80)
+                    }
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 28)
                 }
-                .padding(.horizontal)
-                .padding(.top, 8)
-                
-                Spacer()
-                
             }
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
-    }
-    
-    var statsRow: some View {
-        HStack(spacing: 16) {
-            StatBox(
-                icon: "shield.fill",
-                number: "138",
-                subtitle: "Heute geblockt:"
-            )
-            
-            StatBox(
-                icon: "chart.bar.fill",
-                number: "12,4K",
-                subtitle: "Gesamt geblockt:"
-            )
+        .onAppear {
+            NetheraBackend.refreshFromMongoDB()
+            reloadBlockedDomains()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+            reloadBlockedDomains()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .adBlockDomainsDidChange)) { _ in
+            reloadBlockedDomains()
         }
     }
-    
-    var blockedDomainsCard: some View {
+
+    private var statsRow: some View {
+        HStack(spacing: 10) {
+            AdBlockStatCard(number: "138", subtitle: "Heute geblockt")
+            AdBlockStatCard(number: "12,4K", subtitle: "Gesamt geblockt")
+        }
+    }
+
+    private var blockedDomainsCard: some View {
         VStack(alignment: .leading, spacing: 14) {
-            
-            HStack(spacing: 8) {
-                Image(systemName: "globe")
-                    .foregroundColor(.white.opacity(0.9))
-                Text("Zuletzt geblockte Domains:")
-                    .font(.headline)
-                    .foregroundColor(.white)
-            }
-            
-            // alle domains zeigen:
-            VStack(spacing: 12) {
-                ForEach(blockedDomains) { domain in
-                    DomainRow(name: domain.name, time: domain.time)
+            Text("Zuletzt geblockte Domains")
+                .font(.headline.weight(.semibold))
+                .foregroundColor(.white)
+
+            VStack(spacing: 10) {
+                if blockedDomains.isEmpty {
+                    Text("Noch keine Domains geblockt.")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(.white.opacity(0.62))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding(12)
+                        .background(Color.white.opacity(0.05))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+                } else {
+                    ForEach(blockedDomains) { domain in
+                        AdBlockDomainRow(name: domain.name, time: domain.time) {
+                            deleteBlockedDomain(domain)
+                        }
+                    }
                 }
             }
 
             VStack(spacing: 10) {
                 Text("Gib eine Domain ein, z. B. example.com (ohne https://).")
                     .font(.caption)
-                    .foregroundColor(.white.opacity(0.8))
+                    .foregroundColor(.white.opacity(0.68))
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                // textfeld mit newBlockedDomain als "class":
                 TextField(
                     "",
                     text: $newBlockedDomain,
-                    prompt: Text("example.com").foregroundColor(.white.opacity(0.55))
+                    prompt: Text("example.com").foregroundColor(.white.opacity(0.50))
                 )
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled(true)
-                    .foregroundColor(.white)
-                    .padding(.horizontal, 14)
-                    .padding(.vertical, 12)
-                    .background(Color.white.opacity(0.12))
-                    .cornerRadius(12)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled(true)
+                .foregroundColor(.white)
+                .padding(.horizontal, 14)
+                .padding(.vertical, 12)
+                .background(Color.white.opacity(0.08))
+                .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
 
                 Button {
                     addBlockedDomain()
                 } label: {
                     Text("Blockieren")
                         .font(.subheadline.weight(.semibold))
-                        .foregroundColor(.white)
+                        .foregroundColor(.black)
                         .frame(maxWidth: .infinity)
                         .padding(.vertical, 12)
-                        .background(
-                            RoundedRectangle(cornerRadius: 12)
-                                .fill(Color.blue.opacity(0.35))
-                        )
+                        .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+                        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
                 }
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
-        }
-        .padding()
-        .background(.white.opacity(0.08))
-        .cornerRadius(24)
-    }
-    
-
-    struct BlockedDomain: Identifiable {
-        let id = UUID()
-        let name: String
-        let time: String
-    }
-    var SingleStatBoxCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            SingleStatBox(
-                icon: "checkmark.shield.fill",
-                text: "Sie haben 97% aller Anfragen blockiert!"
-            )
-        }
-        .padding()
-        .background(.white.opacity(0.08))
-        .cornerRadius(24)
-    }
-    
-   
-    
-}
-
-
-// Wiederverwendbare Structs:
-
-// Glasbox mit Info:
-
-struct StatBox: View {
-    let icon: String
-    let number: String
-    let subtitle: String
-    
-    var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            
-            Image(systemName: icon)
-                .foregroundColor(.white)
-            
-            Text(number)
-                .font(.system(size: 30, weight: .bold))
-                .foregroundColor(.white)
-            
-            Text(subtitle)
-                .font(.footnote)
-                .multilineTextAlignment(.leading)
-                .foregroundColor(.white.opacity(0.8))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding()
-        .background(.white.opacity(0.1))
-        .cornerRadius(22)
+        .padding(16)
+        .background(dashboardCardBackground)
+    }
+
+    private var protectionCard: some View {
+        HStack(spacing: 14) {
+            Text("97%")
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text("Anfragen blockiert")
+                    .font(.headline.weight(.semibold))
+                    .foregroundColor(.white)
+
+                Text("Basierend auf den aktuellen Filterregeln.")
+                    .font(.footnote)
+                    .foregroundColor(.white.opacity(0.62))
+            }
+
+            Spacer()
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(dashboardCardBackground)
+    }
+
+    private var dashboardBackground: some View {
+        LinearGradient(
+            colors: [
+                Color(red: 0.04, green: 0.11, blue: 0.15),
+                Color(red: 0.03, green: 0.04, blue: 0.07),
+                Color.black
+            ],
+            startPoint: .topLeading,
+            endPoint: .bottomTrailing
+        )
+        .ignoresSafeArea()
+    }
+
+    private var dashboardCardBackground: some View {
+        RoundedRectangle(cornerRadius: 22, style: .continuous)
+            .fill(Color.white.opacity(0.07))
+            .overlay(
+                RoundedRectangle(cornerRadius: 22, style: .continuous)
+                    .stroke(Color.white.opacity(0.08), lineWidth: 1)
+            )
+            .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 6)
     }
 }
 
-// Reihe in der Liste der geblockten Domains:
+private struct AdBlockStatCard: View {
+    let number: String
+    let subtitle: String
 
-struct DomainRow: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            Text(number)
+                .font(.system(size: 28, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+
+            Text(subtitle)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.white.opacity(0.66))
+        }
+        .frame(maxWidth: .infinity, minHeight: 82, alignment: .leading)
+        .padding(14)
+        .background(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.white.opacity(0.07))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 18, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+        )
+    }
+}
+
+private struct AdBlockDomainRow: View {
     let name: String
     let time: String
-    
-    var body: some View {
-        HStack {
-            HStack(spacing: 8) {
-                Image(systemName: "nosign")
-                    .foregroundColor(.white.opacity(0.85))
-                Text(name)
-                    .foregroundColor(.white)
-                    .lineLimit(1)
-                    .font(.title3)
-            }
-            
-            Spacer()
-            
-            HStack(spacing: 4) {
-                Image(systemName: "clock")
-                Text(time)
-            }
-            .foregroundColor(.white.opacity(0.7))
-        }
-        .font(.subheadline)
-    }
-}
+    let onDelete: () -> Void
 
-struct SingleStatBox: View {
-    let icon: String
-    let text: String
-    
     var body: some View {
-        HStack {
-            
+        HStack(spacing: 10) {
+            Text(name)
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.white)
+                .lineLimit(1)
+
             Spacer()
-            
-            HStack(spacing: 12) {
-                Image(systemName: icon)
-                    .font(.system(size: 42))
-                
-                Text(text)
-                    .font(.system(size: 22, weight: .bold))
+
+            Text(time)
+                .font(.caption.weight(.semibold))
+                .foregroundColor(.white.opacity(0.58))
+
+            Button(action: onDelete) {
+                Image(systemName: "xmark")
+                    .font(.caption.weight(.bold))
+                    .foregroundColor(.white.opacity(0.64))
+                    .frame(width: 26, height: 26)
+                    .background(Color.white.opacity(0.08))
+                    .clipShape(Circle())
             }
-            .foregroundColor(.white)
-            
-            Spacer()
+            .buttonStyle(.plain)
+            .accessibilityLabel("\(name) löschen")
         }
-        .frame(maxWidth: 400)
-        .padding()
-        .background(.white.opacity(0.1))
-        .cornerRadius(22)
-        .frame(maxWidth: .infinity)
+        .padding(12)
+        .background(Color.white.opacity(0.05))
+        .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
     }
 }
 

@@ -7,21 +7,27 @@ struct SpeedCard: View {
     
     var body: some View {
         
-        VStack {
+        VStack(alignment: .leading, spacing: 6) {
             Text(value)
-                .font(.largeTitle)
-                .bold()
-                .foregroundColor(.white) // Wert sichtbar
+                .font(.system(size: 30, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+                .lineLimit(1)
+                .minimumScaleFactor(0.76)
             
             Text(label)
-                .foregroundColor(.gray) // Label dezent
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.white.opacity(0.66))
         }
-        .padding()
-        .frame(maxWidth: .infinity)
+        .padding(16)
+        .frame(maxWidth: .infinity, minHeight: 92, alignment: .leading)
         .background(
-            RoundedRectangle(cornerRadius: 16)
-                .fill(Color(red: 0.1, green: 0.15, blue: 0.2)) // dunkler Hintergrund
-                .shadow(color: .black.opacity(0.3), radius: 5, x: 0, y: 2)
+            RoundedRectangle(cornerRadius: 22, style: .continuous)
+                .fill(Color.white.opacity(0.07))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 22, style: .continuous)
+                        .stroke(Color.white.opacity(0.08), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.16), radius: 12, x: 0, y: 6)
         )
     }
 }

@@ -5,6 +5,20 @@ import Foundation
 
 extension Notification.Name {
     static let groupBlocklistDidChange = Notification.Name("groupBlocklistDidChange")
+    static let globalBlocklistDidChange = Notification.Name("globalBlocklistDidChange")
+    static let adBlockDomainsDidChange = Notification.Name("adBlockDomainsDidChange")
+}
+
+struct AdBlockDomain: Codable, Identifiable, Equatable {
+    var id: UUID
+    var name: String
+    var time: String
+
+    init(id: UUID = UUID(), name: String, time: String) {
+        self.id = id
+        self.name = name
+        self.time = time
+    }
 }
 
 struct BlocklistProfile: Codable, Equatable {

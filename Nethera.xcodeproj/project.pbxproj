@@ -490,6 +490,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Nethera nutzt Face ID, um sensible Router- und Kontodaten zu schützen.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Nethera verbindet sich mit dem lokalen Backend auf deinem Mac, um Router- und Gerätedaten zu synchronisieren.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -525,6 +526,7 @@
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_NSAppTransportSecurity_NSAllowsArbitraryLoads = YES;
 				INFOPLIST_KEY_NSFaceIDUsageDescription = "Nethera nutzt Face ID, um sensible Router- und Kontodaten zu schützen.";
+				INFOPLIST_KEY_NSLocalNetworkUsageDescription = "Nethera verbindet sich mit dem lokalen Backend auf deinem Mac, um Router- und Gerätedaten zu synchronisieren.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;

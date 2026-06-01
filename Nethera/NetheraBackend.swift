@@ -7,6 +7,8 @@ enum NetheraBackend {
     private static let settingsKey = "backend.devices.settings"
     private static let presetsKey = "backend.presets"
     private static let groupBlocklistsKey = "backend.groupBlocklists"
+    private static let globalBlocklistKey = "backend.globalBlocklist"
+    private static let adBlockDomainsKey = "backend.adBlockDomains"
     private static let routerSettingsKey = "backend.routerSettings"
     private static let backendAvailableKey = "backend.isAvailable"
     private static let didMigrateLegacyKey = "backend.didMigrateLegacyStorage"
@@ -27,39 +29,56 @@ enum NetheraBackend {
         var deviceSettings: [String: DeviceSettings]
         var presets: [DevicePreset]
         var groupBlocklists: [String: BlocklistProfile]
+        var globalBlocklist: BlocklistProfile?
+        var adBlockDomains: [AdBlockDomain]?
         var routerSettings: RouterSettings?
     }
 
     // lädt aktuellen stand aus mongodb und cached ihn lokal:
     static func refreshFromMongoDB() {
-        guard let url = URL(string: "\(baseURL)/api/state") else { return }
+        refreshFromMongoDB(using: backendBaseURLCandidates())
+    }
+
+    private static func refreshFromMongoDB(using candidates: [String]) {
+        guard let candidate = candidates.first,
+              let url = URL(string: "\(candidate)/api/state") else {
+            markDatabaseUnavailable()
+            return
+        }
 
         URLSession.shared.dataTask(with: url) { data, response, error in
             if let error {
-                print("NetheraBackend refresh failed: \(error.localizedDescription)")
-                markDatabaseUnavailable()
+                print("NetheraBackend refresh failed for \(candidate): \(error.localizedDescription)")
+                refreshFromMongoDB(using: Array(candidates.dropFirst()))
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-                print("NetheraBackend refresh failed with status \(httpResponse.statusCode)")
-                markDatabaseUnavailable()
+                print("NetheraBackend refresh failed for \(candidate) with status \(httpResponse.statusCode)")
+                refreshFromMongoDB(using: Array(candidates.dropFirst()))
                 return
             }
 
             guard let data,
                   let state = try? JSONDecoder().decode(BackendState.self, from: data) else {
-                print("NetheraBackend refresh failed: invalid response")
-                markDatabaseUnavailable()
+                print("NetheraBackend refresh failed for \(candidate): invalid response")
+                refreshFromMongoDB(using: Array(candidates.dropFirst()))
                 return
             }
 
+            UserDefaults.standard.set(candidate, forKey: baseURLKey)
             UserDefaults.standard.set(true, forKey: backendAvailableKey)
             save(state.devices, forKey: devicesKey)
             save(state.groups, forKey: groupsKey)
             save(state.deviceSettings, forKey: settingsKey)
             save(state.presets, forKey: presetsKey)
             save(state.groupBlocklists, forKey: groupBlocklistsKey)
+            if let globalBlocklist = state.globalBlocklist {
+                save(globalBlocklist, forKey: globalBlocklistKey)
+            }
+            if let adBlockDomains = state.adBlockDomains {
+                save(adBlockDomains, forKey: adBlockDomainsKey)
+            }
             if let routerSettings = state.routerSettings {
                 save(routerSettings, forKey: routerSettingsKey)
             }
@@ -73,6 +92,17 @@ enum NetheraBackend {
 
     static func isDatabaseAvailable() -> Bool {
         UserDefaults.standard.bool(forKey: backendAvailableKey)
+    }
+
+    static func currentBackendBaseURL() -> String {
+        baseURL
+    }
+
+    static func saveBackendBaseURL(_ urlString: String) {
+        let normalized = normalizeBaseURL(urlString)
+        guard !normalized.isEmpty else { return }
+        UserDefaults.standard.set(normalized, forKey: baseURLKey)
+        refreshFromMongoDB()
     }
 
     // lädt geräte aus der backend-schicht:
@@ -179,6 +209,34 @@ enum NetheraBackend {
         NetheraWidgetDataStore.syncSnapshot()
     }
 
+    // lädt globale blocklist für das gesamte netzwerk:
+    static func globalBlocklist() -> BlocklistProfile {
+        migrateLegacyStorageIfNeeded()
+        return load(globalBlocklistKey, as: BlocklistProfile.self) ?? BlocklistProfile()
+    }
+
+    // speichert globale blocklist für das gesamte netzwerk:
+    static func saveGlobalBlocklist(_ profile: BlocklistProfile) {
+        save(profile, forKey: globalBlocklistKey)
+        push(["profile": profile], to: "/api/global-blocklist", method: "PUT")
+        NetheraWidgetDataStore.syncSnapshot()
+        NotificationCenter.default.post(name: .globalBlocklistDidChange, object: nil)
+    }
+
+    // lädt adblock-domains für das gesamte netzwerk:
+    static func adBlockDomains() -> [AdBlockDomain] {
+        migrateLegacyStorageIfNeeded()
+        return load(adBlockDomainsKey, as: [AdBlockDomain].self) ?? defaultAdBlockDomains()
+    }
+
+    // speichert adblock-domains für das gesamte netzwerk:
+    static func saveAdBlockDomains(_ domains: [AdBlockDomain]) {
+        save(domains, forKey: adBlockDomainsKey)
+        push(["domains": domains], to: "/api/adblock-domains", method: "PUT")
+        NetheraWidgetDataStore.syncSnapshot()
+        NotificationCenter.default.post(name: .adBlockDomainsDidChange, object: nil)
+    }
+
     // lädt alle gruppen-blocklists:
     static func allGroupBlocklists() -> [String: BlocklistProfile] {
         migrateLegacyStorageIfNeeded()
@@ -243,7 +301,58 @@ enum NetheraBackend {
     }
 
     private static var baseURL: String {
-        UserDefaults.standard.string(forKey: baseURLKey) ?? "http://localhost:3001"
+        backendBaseURLCandidates().first ?? defaultBaseURL
+    }
+
+    private static func defaultAdBlockDomains() -> [AdBlockDomain] {
+        [
+            AdBlockDomain(name: "googleads.g.doubleclick.net", time: "2m"),
+            AdBlockDomain(name: "connect.facebook.com", time: "4m"),
+            AdBlockDomain(name: "stats.g.doubleclick.net", time: "17m"),
+            AdBlockDomain(name: "adservice.google.com", time: "29m")
+        ]
+    }
+
+    private static var defaultBaseURL: String {
+        #if targetEnvironment(simulator)
+        return "http://localhost:3001"
+        #else
+        return "http://10.214.9.150:3001"
+        #endif
+    }
+
+    private static func backendBaseURLCandidates() -> [String] {
+        let defaults = UserDefaults.standard
+        let rawCandidates = [
+            defaults.string(forKey: baseURLKey),
+            defaultBaseURL,
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "http://10.214.9.150:3001"
+        ]
+
+        var candidates: [String] = []
+        for rawCandidate in rawCandidates {
+            guard let candidate = rawCandidate?.trimmingCharacters(in: .whitespacesAndNewlines),
+                  !candidate.isEmpty else { continue }
+            let normalized = normalizeBaseURL(candidate)
+            if !candidates.contains(normalized) {
+                candidates.append(normalized)
+            }
+        }
+        return candidates
+    }
+
+    private static func normalizeBaseURL(_ value: String) -> String {
+        let trimmed = value
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
+
+        guard !trimmed.isEmpty else { return "" }
+        if trimmed.contains("://") {
+            return trimmed
+        }
+        return "http://\(trimmed)"
     }
 
     // übernimmt alte lokale daten einmalig in die neue backend-schicht:
@@ -288,9 +397,6 @@ enum NetheraBackend {
     private static func markDatabaseUnavailable() {
         let defaults = UserDefaults.standard
         defaults.set(false, forKey: backendAvailableKey)
-        [devicesKey, groupsKey, settingsKey, presetsKey, groupBlocklistsKey, routerSettingsKey].forEach {
-            defaults.removeObject(forKey: $0)
-        }
 
         DispatchQueue.main.async {
             NetheraWidgetDataStore.syncSnapshot()
@@ -319,13 +425,11 @@ enum NetheraBackend {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let error {
                 print("NetheraBackend push failed \(method) \(path): \(error.localizedDescription)")
-                markDatabaseUnavailable()
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
                 print("NetheraBackend push failed \(method) \(path): status \(httpResponse.statusCode)")
-                markDatabaseUnavailable()
                 return
             }
 
@@ -341,13 +445,11 @@ enum NetheraBackend {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let error {
                 print("NetheraBackend push failed \(method) \(path): \(error.localizedDescription)")
-                markDatabaseUnavailable()
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
                 print("NetheraBackend push failed \(method) \(path): status \(httpResponse.statusCode)")
-                markDatabaseUnavailable()
                 return
             }
 

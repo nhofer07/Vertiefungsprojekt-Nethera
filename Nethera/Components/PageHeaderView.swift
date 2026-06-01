@@ -6,15 +6,18 @@ struct PageHeaderView<TrailingContent: View>: View {
 
     let title: String
     let showBackButton: Bool
+    let outerHorizontalPadding: CGFloat
     @ViewBuilder var trailingContent: () -> TrailingContent
 
     init(
         title: String,
         showBackButton: Bool = false,
+        outerHorizontalPadding: CGFloat = 20,
         @ViewBuilder trailingContent: @escaping () -> TrailingContent = { EmptyView() }
     ) {
         self.title = title
         self.showBackButton = showBackButton
+        self.outerHorizontalPadding = outerHorizontalPadding
         self.trailingContent = trailingContent
     }
 
@@ -61,7 +64,7 @@ struct PageHeaderView<TrailingContent: View>: View {
                 .fill(Color.white.opacity(0.1))
                 .shadow(color: Color.black.opacity(0.25), radius: 10, x: 0, y: 5)
         )
-        .padding(.horizontal, 20)
+        .padding(.horizontal, outerHorizontalPadding)
         .padding(.top, 12)
     }
 }
