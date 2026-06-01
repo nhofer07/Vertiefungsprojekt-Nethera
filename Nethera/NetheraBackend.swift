@@ -36,6 +36,7 @@ enum NetheraBackend {
 
     // lädt aktuellen stand aus mongodb und cached ihn lokal:
     static func refreshFromMongoDB() {
+        markDatabaseUnavailable()
         refreshFromMongoDB(using: backendBaseURLCandidates())
     }
 
@@ -212,11 +213,13 @@ enum NetheraBackend {
     // lädt globale blocklist für das gesamte netzwerk:
     static func globalBlocklist() -> BlocklistProfile {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return BlocklistProfile() }
         return load(globalBlocklistKey, as: BlocklistProfile.self) ?? BlocklistProfile()
     }
 
     // speichert globale blocklist für das gesamte netzwerk:
     static func saveGlobalBlocklist(_ profile: BlocklistProfile) {
+        guard isDatabaseAvailable() else { return }
         save(profile, forKey: globalBlocklistKey)
         push(["profile": profile], to: "/api/global-blocklist", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -226,11 +229,13 @@ enum NetheraBackend {
     // lädt adblock-domains für das gesamte netzwerk:
     static func adBlockDomains() -> [AdBlockDomain] {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return [] }
         return load(adBlockDomainsKey, as: [AdBlockDomain].self) ?? defaultAdBlockDomains()
     }
 
     // speichert adblock-domains für das gesamte netzwerk:
     static func saveAdBlockDomains(_ domains: [AdBlockDomain]) {
+        guard isDatabaseAvailable() else { return }
         save(domains, forKey: adBlockDomainsKey)
         push(["domains": domains], to: "/api/adblock-domains", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()

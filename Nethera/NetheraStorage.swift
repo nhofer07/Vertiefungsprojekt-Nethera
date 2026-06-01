@@ -1,7 +1,7 @@
 import Foundation
 
 
-// speicherlogik mit KI:
+// speicherlogik:
 
 extension Notification.Name {
     static let groupBlocklistDidChange = Notification.Name("groupBlocklistDidChange")
