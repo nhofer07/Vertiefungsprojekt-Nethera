@@ -38,6 +38,7 @@ function asyncRoute(handler) {
   };
 }
 
+// gruppen liegen jetzt in einer eigenen collection, meta ist nur alter fallback:
 async function loadGroups(db) {
   const groupDocs = await db.collection("groups").find({}, { projection: { _id: 0 } }).sort({ order: 1 }).toArray();
   if (groupDocs.length > 0) {
@@ -48,6 +49,7 @@ async function loadGroups(db) {
   return meta?.value ?? [];
 }
 
+// schreibt die gruppen sauber sortiert neu in mongodb:
 async function saveGroups(db, groups) {
   const cleanedGroups = uniqueGroups(groups);
   await db.collection("groups").deleteMany({});
@@ -56,6 +58,7 @@ async function saveGroups(db, groups) {
   }
 }
 
+// lädt router- und gast-wlan-daten aus mongodb:
 async function loadRouterSettings(db) {
   const settings = await db.collection("routerSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
   if (settings) {
@@ -111,6 +114,7 @@ async function saveAdBlockDomains(db, domains) {
   );
 }
 
+// ergänzt bei jedem gerät den namen vom aktuell aktiven preset:
 function presetInfoForSettings(settings, presetsByID) {
   const activePresetID = settings?.activePresetID ?? null;
   return {
@@ -161,6 +165,7 @@ app.get("/health", asyncRoute(async (_request, response) => {
   response.json({ ok: true, database: "mongodb" });
 }));
 
+// baut den kompletten zustand für die app in einer antwort zusammen:
 app.get("/api/state", asyncRoute(async (_request, response) => {
   const db = await getDb();
   const [devices, groups, routerSettings, globalBlocklist, adBlockDomains, deviceSettings, presets, groupBlocklists] = await Promise.all([
@@ -186,6 +191,7 @@ app.get("/api/state", asyncRoute(async (_request, response) => {
   });
 }));
 
+// ersetzt die geräteliste in mongodb mit dem stand aus der app:
 app.put("/api/devices", asyncRoute(async (request, response) => {
   const devices = uniqueByID(Array.isArray(request.body?.devices) ? request.body.devices : []);
   const db = await getDb();
@@ -230,6 +236,7 @@ app.put("/api/adblock-domains", asyncRoute(async (request, response) => {
   response.json({ ok: true, count: domains.length });
 }));
 
+// speichert die einstellungen für ein einzelnes gerät:
 app.put("/api/device-settings/:deviceID", asyncRoute(async (request, response) => {
   const db = await getDb();
   const settings = request.body?.settings ?? {};
@@ -249,6 +256,7 @@ app.delete("/api/device-settings/:deviceID", asyncRoute(async (request, response
   response.json({ ok: true });
 }));
 
+// speichert alle presets und aktualisiert danach die aktiven preset-namen:
 app.put("/api/presets", asyncRoute(async (request, response) => {
   const presets = uniqueByID(Array.isArray(request.body?.presets) ? request.body.presets : []);
   const db = await getDb();

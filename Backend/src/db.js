@@ -9,6 +9,7 @@ const dbName = process.env.MONGODB_DB ?? "nethera";
 const client = new MongoClient(uri);
 let db;
 
+// baut die mongodb-verbindung einmal auf und nutzt sie danach wieder:
 export async function getDb() {
   if (!db) {
     await client.connect();
@@ -18,6 +19,7 @@ export async function getDb() {
   return db;
 }
 
+// verhindert doppelte ids und macht die collections stabiler:
 async function ensureIndexes(database) {
   await database.collection("devices").createIndex({ id: 1 }, { unique: true });
   await database.collection("deviceSettings").createIndex({ deviceID: 1 }, { unique: true });

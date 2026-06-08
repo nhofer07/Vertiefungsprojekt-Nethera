@@ -23,6 +23,7 @@ enum NetheraBackend {
         var firewall: Bool = false
     }
 
+    // dieses objekt kommt gesammelt von /api/state aus dem backend:
     struct BackendState: Codable {
         var devices: [Device]
         var groups: [String]
@@ -34,12 +35,13 @@ enum NetheraBackend {
         var routerSettings: RouterSettings?
     }
 
-    // lädt aktuellen stand aus mongodb und cached ihn lokal:
+    // startet einen frischen sync mit mongodb:
     static func refreshFromMongoDB() {
         markDatabaseUnavailable()
         refreshFromMongoDB(using: backendBaseURLCandidates())
     }
 
+    // probiert unsere backend-urls durch und nimmt die erste die antwortet:
     private static func refreshFromMongoDB(using candidates: [String]) {
         guard let candidate = candidates.first,
               let url = URL(string: "\(candidate)/api/state") else {
@@ -67,6 +69,7 @@ enum NetheraBackend {
                 return
             }
 
+            // wenn der request klappt, cachen wir die daten lokal für die views/widgets:
             UserDefaults.standard.set(candidate, forKey: baseURLKey)
             UserDefaults.standard.set(true, forKey: backendAvailableKey)
             save(state.devices, forKey: devicesKey)
@@ -91,6 +94,7 @@ enum NetheraBackend {
         }.resume()
     }
 
+    // damit die ui weiß ob sie daten oder offline-hinweis zeigen soll:
     static func isDatabaseAvailable() -> Bool {
         UserDefaults.standard.bool(forKey: backendAvailableKey)
     }
@@ -399,6 +403,7 @@ enum NetheraBackend {
         defaults.set(oldData, forKey: newKey)
     }
 
+    // wird genutzt wenn das backend gerade nicht erreichbar ist:
     private static func markDatabaseUnavailable() {
         let defaults = UserDefaults.standard
         defaults.set(false, forKey: backendAvailableKey)
@@ -409,16 +414,19 @@ enum NetheraBackend {
         }
     }
 
+    // kleiner lokaler cache, damit die app nach einem erfolgreichen sync schnell lesen kann:
     private static func load<T: Decodable>(_ key: String, as type: T.Type) -> T? {
         guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
         return try? JSONDecoder().decode(T.self, from: data)
     }
 
+    // speichert swift-objekte als json in UserDefaults:
     private static func save<T: Encodable>(_ value: T, forKey key: String) {
         guard let data = try? JSONEncoder().encode(value) else { return }
         UserDefaults.standard.set(data, forKey: key)
     }
 
+    // schreibt änderungen per http zurück ins backend:
     private static func push<T: Encodable>(_ body: T, to path: String, method: String) {
         guard let url = URL(string: "\(baseURL)\(path)"),
               let data = try? JSONEncoder().encode(body) else { return }
@@ -443,6 +451,7 @@ enum NetheraBackend {
         }.resume()
     }
 
+    // für delete-requests ohne json-body:
     private static func pushEmpty(to path: String, method: String) {
         guard let url = URL(string: "\(baseURL)\(path)") else { return }
         var request = URLRequest(url: url)
