@@ -2,6 +2,7 @@ import SwiftUI
 
 struct SpeedView: View {
     @State private var buttonPressed = false
+    @State private var metrics = NetheraBackend.loadSpeedMetrics()
 
     var body: some View {
         NavigationStack {
@@ -26,9 +27,9 @@ struct SpeedView: View {
                         .background(speedCardBackground)
 
                         VStack(spacing: 12) {
-                            SpeedCard(value: "85.7 mb/s", label: "Download Geschwindigkeit")
-                            SpeedCard(value: "98.6 mb/s", label: "Upload Geschwindigkeit")
-                            SpeedCard(value: "72.2 mb/s", label: "ø Download")
+                            SpeedCard(value: display(metrics.download), label: "Download Geschwindigkeit")
+                            SpeedCard(value: display(metrics.upload), label: "Upload Geschwindigkeit")
+                            SpeedCard(value: display(metrics.averageDownload), label: "ø Download")
                         }
 
                         Button {
@@ -60,6 +61,17 @@ struct SpeedView: View {
         }
         .navigationBarBackButtonHidden(true)
         .toolbar(.hidden, for: .navigationBar)
+        .onAppear {
+            NetheraBackend.refreshFromMongoDB()
+            metrics = NetheraBackend.loadSpeedMetrics()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+            metrics = NetheraBackend.loadSpeedMetrics()
+        }
+    }
+
+    private func display(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Keine Daten" : value
     }
 
     private var speedBackground: some View {

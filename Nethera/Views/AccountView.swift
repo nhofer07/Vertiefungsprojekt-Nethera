@@ -8,21 +8,31 @@
 import SwiftUI
 
 struct AccountView: View {
+    var showBackButton = true
+
     @StateObject private var authentication = AuthenticationManager()
     
     // unsere Muster-Variablen + neuen gespeicherten:
     
     // MARK: Editable State
-    @State private var name = "Max Mustermann"
-    @State private var email = "max@nethera.com"
-    @State private var phone = "+43 123 456789"
-    @State private var password = "••••••••"
+    @State private var name = ""
+    @State private var email = ""
+    @State private var phone = ""
+    @State private var password = ""
+    @State private var birthDate = ""
+    @State private var isLoggedIn = false
+    @State private var authMode = ""
 
-    @State private var savedName = "Max Mustermann"
-    @State private var savedEmail = "max@nethera.com"
-    @State private var savedPhone = "+43 123 456789"
-    @State private var savedPassword = "••••••••"
+    @State private var savedName = ""
+    @State private var savedEmail = ""
+    @State private var savedPhone = ""
+    @State private var savedPassword = ""
+    @State private var savedBirthDate = ""
+    @State private var savedIsLoggedIn = false
+    @State private var savedAuthMode = ""
     @State private var showSavedMessage = false
+    @State private var authMessage = ""
+    @State private var showDeleteConfirmation = false
 
     
     
@@ -32,7 +42,10 @@ struct AccountView: View {
         name != savedName ||
         email != savedEmail ||
         phone != savedPhone ||
-        password != savedPassword
+        password != savedPassword ||
+        birthDate != savedBirthDate ||
+        isLoggedIn != savedIsLoggedIn ||
+        authMode != savedAuthMode
     }
     
     
@@ -49,7 +62,7 @@ struct AccountView: View {
                 
                 ScrollView {
                     VStack(spacing: 20) {
-                        PageHeaderView(title: "Konto", showBackButton: true) {
+                        PageHeaderView(title: "Konto", showBackButton: showBackButton) {
                             Button {
                                 saveAccountSettings()
                             } label: {
@@ -74,32 +87,76 @@ struct AccountView: View {
                         // alle Felder, die man so sieht:
                         
                         VStack(spacing: 20) {
+                            SectionCard(title: "Sitzung", icon: "person.badge.key") {
+                                HStack(spacing: 12) {
+                                    Image(systemName: isLoggedIn ? "checkmark.seal.fill" : "person.badge.key.fill")
+                                        .font(.headline.weight(.bold))
+                                        .foregroundColor(isLoggedIn ? .black : .white)
+                                        .frame(width: 34, height: 34)
+                                        .background(isLoggedIn ? Color(red: 0.45, green: 0.83, blue: 0.62) : Color.white.opacity(0.12))
+                                        .clipShape(Circle())
+
+                                    VStack(alignment: .leading, spacing: 3) {
+                                        Text(isLoggedIn ? "Aktiv" : "Nicht angemeldet")
+                                            .font(.headline.weight(.semibold))
+                                            .foregroundColor(.white)
+
+                                        Text(isLoggedIn ? "Dein Konto ist mit Nethera verbunden." : "Melde dich über das Login-Fenster an.")
+                                            .font(.caption)
+                                            .foregroundColor(.white.opacity(0.66))
+                                    }
+
+                                    Spacer()
+                                }
+                                .padding(12)
+                                .background(Color.white.opacity(0.06))
+                                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+
+                                if isLoggedIn {
+                                    AccountActionButton(
+                                        title: "Abmelden",
+                                        icon: "rectangle.portrait.and.arrow.right",
+                                        foregroundColor: .white,
+                                        backgroundColor: Color.white.opacity(0.08),
+                                        borderColor: Color.white.opacity(0.14)
+                                    ) {
+                                        logout()
+                                    }
+                                } else {
+                                    Text("Melde dich über das Login-Fenster an.")
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundColor(.white.opacity(0.66))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+
+                                if !authMessage.isEmpty {
+                                    Text(authMessage)
+                                        .font(.caption.weight(.semibold))
+                                        .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                }
+                            }
+
                             // MARK: Profil
                             SectionCard(title: "Profil") {
                                 EditableTextRow(icon: "person.crop.circle", label: "Name", text: $name)
                                 EditableTextRow(icon: "envelope", label: "E-Mail", text: $email)
                                 EditableTextRow(icon: "phone", label: "Telefon", text: $phone)
+                                AccountPasswordRow(authentication: authentication, password: $password)
 
-                                if authentication.isUnlocked {
-                                    EditableTextRow(icon: "lock.open", label: "Passwort", text: $password)
-                                } else {
-                                    LockedSensitiveRow(icon: "lock", label: "Passwort")
-                                }
-
-                                SettingRow(icon: "calendar", label: "Geburtsdatum", value: "01.01.1990", isEditable: false)
-                            }
-                            
-                            // Sicherheit
-                            SectionCard(title: "Sicherheit") {
-                                SensitiveAccessCard(authentication: authentication)
-                                SettingRow(icon: "shield.lefthalf.fill", label: "2FA", value: "aktiviert", isEditable: false)
-                                SettingRow(icon: "key", label: "API-Zugriff", value: "deaktiviert", isEditable: false)
+                                SettingRow(icon: "calendar", label: "Geburtsdatum", value: birthDate, isEditable: false)
                             }
                             
                             // MARK: Kontoverwaltung
                             SectionCard(title: "Kontoverwaltung") {
-                                SettingRow(icon: "power", label: "Konto deaktivieren", value: "", isEditable: false)
-                                SettingRow(icon: "trash", label: "Konto löschen", value: "", isEditable: false)
+                                AccountActionButton(
+                                    title: "Konto löschen",
+                                    icon: "trash",
+                                    foregroundColor: .white,
+                                    backgroundColor: Color(red: 0.95, green: 0.27, blue: 0.27).opacity(0.9)
+                                ) {
+                                    showDeleteConfirmation = true
+                                }
                             }
                             
                             Spacer(minLength: 20)
@@ -115,6 +172,21 @@ struct AccountView: View {
         }
         .onAppear {
             loadAccountSettings()
+            NetheraBackend.refreshFromMongoDB()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
+            loadAccountSettings()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .accountSettingsDidChange)) { _ in
+            loadAccountSettings()
+        }
+        .alert("Konto wirklich löschen?", isPresented: $showDeleteConfirmation) {
+            Button("Abbrechen", role: .cancel) { }
+            Button("Konto löschen", role: .destructive) {
+                deleteAccount()
+            }
+        } message: {
+            Text("Deine Kontodaten werden aus der Datenbank entfernt und du wirst abgemeldet.")
         }
     }
 
@@ -122,15 +194,27 @@ struct AccountView: View {
     // saven:
     
     private func saveAccountSettings() {
-        UserDefaults.standard.set(name, forKey: "account.name")
-        UserDefaults.standard.set(email, forKey: "account.email")
-        UserDefaults.standard.set(phone, forKey: "account.phone")
-        UserDefaults.standard.set(password, forKey: "account.password")
+        let settings = NetheraBackend.AccountSettings(
+            name: name,
+            email: email,
+            phone: phone,
+            password: password,
+            birthDate: birthDate,
+            twoFactorStatus: "",
+            apiAccessStatus: "",
+            isLoggedIn: isLoggedIn,
+            authMode: authMode
+        )
+
+        NetheraBackend.saveAccountSettings(settings)
 
         savedName = name
         savedEmail = email
         savedPhone = phone
         savedPassword = password
+        savedBirthDate = birthDate
+        savedIsLoggedIn = isLoggedIn
+        savedAuthMode = authMode
 
         showSavedMessage = true
 
@@ -139,20 +223,128 @@ struct AccountView: View {
         }
     }
 
+    private func logout() {
+        isLoggedIn = false
+        authMode = "Abgemeldet"
+        authMessage = "Abgemeldet und in der Datenbank gespeichert"
+        saveAccountSettings()
+    }
+
+    private func deleteAccount() {
+        NetheraBackend.deleteAccountSettings()
+
+        name = ""
+        email = ""
+        phone = ""
+        password = ""
+        birthDate = ""
+        isLoggedIn = false
+        authMode = ""
+
+        savedName = ""
+        savedEmail = ""
+        savedPhone = ""
+        savedPassword = ""
+        savedBirthDate = ""
+        savedIsLoggedIn = false
+        savedAuthMode = ""
+    }
+
     // neuen anzeigen beim nächsten mal:
     private func loadAccountSettings() {
-        name = UserDefaults.standard.string(forKey: "account.name") ?? name
-        email = UserDefaults.standard.string(forKey: "account.email") ?? email
-        phone = UserDefaults.standard.string(forKey: "account.phone") ?? phone
-        password = UserDefaults.standard.string(forKey: "account.password") ?? password
+        let settings = NetheraBackend.loadAccountSettings()
+
+        name = settings.name
+        email = settings.email
+        phone = settings.phone
+        password = settings.password
+        birthDate = settings.birthDate
+        isLoggedIn = settings.isLoggedIn
+        authMode = settings.authMode
 
         savedName = name
         savedEmail = email
         savedPhone = phone
         savedPassword = password
+        savedBirthDate = birthDate
+        savedIsLoggedIn = isLoggedIn
+        savedAuthMode = authMode
     }
 }
 
 #Preview {
     AccountView()
+}
+
+private struct AccountPasswordRow: View {
+    @ObservedObject var authentication: AuthenticationManager
+    @Binding var password: String
+
+    var body: some View {
+        if authentication.isUnlocked {
+            EditableTextRow(icon: "lock.open", label: "Passwort", text: $password)
+        } else {
+            Button {
+                authentication.unlock()
+            } label: {
+                HStack {
+                    Image(systemName: "faceid")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
+                        .frame(width: 30)
+
+                    Text("Passwort")
+                        .foregroundColor(.white)
+                        .font(.system(size: 16, weight: .semibold))
+
+                    Spacer()
+
+                    Text("Anzeigen")
+                        .foregroundColor(.white.opacity(0.62))
+                        .font(.system(size: 15, weight: .semibold))
+
+                    Image(systemName: "chevron.right")
+                        .font(.caption.weight(.bold))
+                        .foregroundColor(.white.opacity(0.45))
+                }
+                .padding(12)
+                .background(Color.white.opacity(0.12))
+                .cornerRadius(16)
+            }
+            .buttonStyle(.plain)
+        }
+    }
+}
+
+private struct AccountActionButton: View {
+    let title: String
+    let icon: String
+    var foregroundColor: Color = .black
+    var backgroundColor: Color = Color(red: 0.35, green: 0.75, blue: 0.9)
+    var borderColor: Color = .clear
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.caption.weight(.bold))
+
+                Text(title)
+                    .font(.caption.weight(.bold))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+            }
+            .foregroundColor(foregroundColor)
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 10)
+            .background(backgroundColor)
+            .clipShape(RoundedRectangle(cornerRadius: 14, style: .continuous))
+            .overlay(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(borderColor, lineWidth: 1)
+            )
+        }
+        .buttonStyle(.plain)
+    }
 }

@@ -9,7 +9,10 @@ enum NetheraBackend {
     private static let groupBlocklistsKey = "backend.groupBlocklists"
     private static let globalBlocklistKey = "backend.globalBlocklist"
     private static let adBlockDomainsKey = "backend.adBlockDomains"
+    private static let speedMetricsKey = "backend.speedMetrics"
+    private static let adBlockStatsKey = "backend.adBlockStats"
     private static let routerSettingsKey = "backend.routerSettings"
+    private static let accountSettingsKey = "backend.accountSettings"
     private static let backendAvailableKey = "backend.isAvailable"
     private static let didMigrateLegacyKey = "backend.didMigrateLegacyStorage"
 
@@ -21,6 +24,135 @@ enum NetheraBackend {
         var darkMode: Bool = false
         var frequency: String = ""
         var firewall: Bool = false
+        var model: String = ""
+        var version: String = ""
+        var firmwareUpdate: String = ""
+        var resetStatus: String = ""
+        var dnsConfiguration: String = ""
+        var proxy: String = ""
+        var ipAddress: String = ""
+        var netmask: String = ""
+
+        init(
+            wifiName: String = "",
+            password: String = "",
+            guestPassword: String = "",
+            notifications: Bool = false,
+            darkMode: Bool = false,
+            frequency: String = "",
+            firewall: Bool = false,
+            model: String = "",
+            version: String = "",
+            firmwareUpdate: String = "",
+            resetStatus: String = "",
+            dnsConfiguration: String = "",
+            proxy: String = "",
+            ipAddress: String = "",
+            netmask: String = ""
+        ) {
+            self.wifiName = wifiName
+            self.password = password
+            self.guestPassword = guestPassword
+            self.notifications = notifications
+            self.darkMode = darkMode
+            self.frequency = frequency
+            self.firewall = firewall
+            self.model = model
+            self.version = version
+            self.firmwareUpdate = firmwareUpdate
+            self.resetStatus = resetStatus
+            self.dnsConfiguration = dnsConfiguration
+            self.proxy = proxy
+            self.ipAddress = ipAddress
+            self.netmask = netmask
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case wifiName, password, guestPassword, notifications, darkMode, frequency, firewall
+            case model, version, firmwareUpdate, resetStatus, dnsConfiguration, proxy, ipAddress, netmask
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            wifiName = try container.decodeIfPresent(String.self, forKey: .wifiName) ?? ""
+            password = try container.decodeIfPresent(String.self, forKey: .password) ?? ""
+            guestPassword = try container.decodeIfPresent(String.self, forKey: .guestPassword) ?? ""
+            notifications = try container.decodeIfPresent(Bool.self, forKey: .notifications) ?? false
+            darkMode = try container.decodeIfPresent(Bool.self, forKey: .darkMode) ?? false
+            frequency = try container.decodeIfPresent(String.self, forKey: .frequency) ?? ""
+            firewall = try container.decodeIfPresent(Bool.self, forKey: .firewall) ?? false
+            model = try container.decodeIfPresent(String.self, forKey: .model) ?? ""
+            version = try container.decodeIfPresent(String.self, forKey: .version) ?? ""
+            firmwareUpdate = try container.decodeIfPresent(String.self, forKey: .firmwareUpdate) ?? ""
+            resetStatus = try container.decodeIfPresent(String.self, forKey: .resetStatus) ?? ""
+            dnsConfiguration = try container.decodeIfPresent(String.self, forKey: .dnsConfiguration) ?? ""
+            proxy = try container.decodeIfPresent(String.self, forKey: .proxy) ?? ""
+            ipAddress = try container.decodeIfPresent(String.self, forKey: .ipAddress) ?? ""
+            netmask = try container.decodeIfPresent(String.self, forKey: .netmask) ?? ""
+        }
+    }
+
+    struct AccountSettings: Codable, Equatable {
+        var name: String = ""
+        var email: String = ""
+        var phone: String = ""
+        var password: String = ""
+        var birthDate: String = ""
+        var twoFactorStatus: String = ""
+        var apiAccessStatus: String = ""
+        var isLoggedIn: Bool = false
+        var authMode: String = ""
+
+        init(
+            name: String = "",
+            email: String = "",
+            phone: String = "",
+            password: String = "",
+            birthDate: String = "",
+            twoFactorStatus: String = "",
+            apiAccessStatus: String = "",
+            isLoggedIn: Bool = false,
+            authMode: String = ""
+        ) {
+            self.name = name
+            self.email = email
+            self.phone = phone
+            self.password = password
+            self.birthDate = birthDate
+            self.twoFactorStatus = twoFactorStatus
+            self.apiAccessStatus = apiAccessStatus
+            self.isLoggedIn = isLoggedIn
+            self.authMode = authMode
+        }
+
+        private enum CodingKeys: String, CodingKey {
+            case name, email, phone, password, birthDate, twoFactorStatus, apiAccessStatus, isLoggedIn, authMode
+        }
+
+        init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            name = try container.decodeIfPresent(String.self, forKey: .name) ?? ""
+            email = try container.decodeIfPresent(String.self, forKey: .email) ?? ""
+            phone = try container.decodeIfPresent(String.self, forKey: .phone) ?? ""
+            password = try container.decodeIfPresent(String.self, forKey: .password) ?? ""
+            birthDate = try container.decodeIfPresent(String.self, forKey: .birthDate) ?? ""
+            twoFactorStatus = try container.decodeIfPresent(String.self, forKey: .twoFactorStatus) ?? ""
+            apiAccessStatus = try container.decodeIfPresent(String.self, forKey: .apiAccessStatus) ?? ""
+            isLoggedIn = try container.decodeIfPresent(Bool.self, forKey: .isLoggedIn) ?? false
+            authMode = try container.decodeIfPresent(String.self, forKey: .authMode) ?? ""
+        }
+    }
+
+    struct SpeedMetrics: Codable, Equatable {
+        var download: String = ""
+        var upload: String = ""
+        var averageDownload: String = ""
+    }
+
+    struct AdBlockStats: Codable, Equatable {
+        var blockedToday: String = ""
+        var blockedTotal: String = ""
+        var blockedPercent: String = ""
     }
 
     // dieses objekt kommt gesammelt von /api/state aus dem backend:
@@ -33,6 +165,9 @@ enum NetheraBackend {
         var globalBlocklist: BlocklistProfile?
         var adBlockDomains: [AdBlockDomain]?
         var routerSettings: RouterSettings?
+        var accountSettings: AccountSettings?
+        var speedMetrics: SpeedMetrics?
+        var adBlockStats: AdBlockStats?
     }
 
     // startet einen frischen sync mit mongodb:
@@ -85,6 +220,15 @@ enum NetheraBackend {
             }
             if let routerSettings = state.routerSettings {
                 save(routerSettings, forKey: routerSettingsKey)
+            }
+            if let accountSettings = state.accountSettings {
+                save(accountSettings, forKey: accountSettingsKey)
+            }
+            if let speedMetrics = state.speedMetrics {
+                save(speedMetrics, forKey: speedMetricsKey)
+            }
+            if let adBlockStats = state.adBlockStats {
+                save(adBlockStats, forKey: adBlockStatsKey)
             }
 
             DispatchQueue.main.async {
@@ -153,17 +297,57 @@ enum NetheraBackend {
     // lädt router- und gast-wlan-einstellungen:
     static func loadRouterSettings() -> RouterSettings {
         migrateLegacyStorageIfNeeded()
-        guard isDatabaseAvailable() else { return RouterSettings() }
         return load(routerSettingsKey, as: RouterSettings.self) ?? RouterSettings()
     }
 
     // speichert router- und gast-wlan-einstellungen:
     static func saveRouterSettings(_ settings: RouterSettings) {
         migrateLegacyStorageIfNeeded()
-        guard isDatabaseAvailable() else { return }
         save(settings, forKey: routerSettingsKey)
         push(["routerSettings": settings], to: "/api/router-settings", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
+    }
+
+    // lädt konto-einstellungen:
+    static func loadAccountSettings() -> AccountSettings {
+        migrateLegacyStorageIfNeeded()
+        return load(accountSettingsKey, as: AccountSettings.self) ?? AccountSettings()
+    }
+
+    // speichert konto-einstellungen:
+    static func saveAccountSettings(_ settings: AccountSettings) {
+        migrateLegacyStorageIfNeeded()
+        save(settings, forKey: accountSettingsKey)
+        push(["accountSettings": settings], to: "/api/account-settings", method: "PUT")
+        NetheraWidgetDataStore.syncSnapshot()
+        NotificationCenter.default.post(name: .accountSettingsDidChange, object: nil)
+    }
+
+    static func deleteAccountSettings() {
+        UserDefaults.standard.removeObject(forKey: accountSettingsKey)
+        pushEmpty(to: "/api/account-settings", method: "DELETE")
+        NetheraWidgetDataStore.syncSnapshot()
+        NotificationCenter.default.post(name: .accountSettingsDidChange, object: nil)
+    }
+
+    static func loadSpeedMetrics() -> SpeedMetrics {
+        migrateLegacyStorageIfNeeded()
+        return load(speedMetricsKey, as: SpeedMetrics.self) ?? SpeedMetrics()
+    }
+
+    static func saveSpeedMetrics(_ metrics: SpeedMetrics) {
+        save(metrics, forKey: speedMetricsKey)
+        push(["speedMetrics": metrics], to: "/api/speed-metrics", method: "PUT")
+    }
+
+    static func loadAdBlockStats() -> AdBlockStats {
+        migrateLegacyStorageIfNeeded()
+        return load(adBlockStatsKey, as: AdBlockStats.self) ?? AdBlockStats()
+    }
+
+    static func saveAdBlockStats(_ stats: AdBlockStats) {
+        save(stats, forKey: adBlockStatsKey)
+        push(["adBlockStats": stats], to: "/api/adblock-stats", method: "PUT")
     }
 
     // lädt alle geräte-settings:
@@ -217,13 +401,11 @@ enum NetheraBackend {
     // lädt globale blocklist für das gesamte netzwerk:
     static func globalBlocklist() -> BlocklistProfile {
         migrateLegacyStorageIfNeeded()
-        guard isDatabaseAvailable() else { return BlocklistProfile() }
         return load(globalBlocklistKey, as: BlocklistProfile.self) ?? BlocklistProfile()
     }
 
     // speichert globale blocklist für das gesamte netzwerk:
     static func saveGlobalBlocklist(_ profile: BlocklistProfile) {
-        guard isDatabaseAvailable() else { return }
         save(profile, forKey: globalBlocklistKey)
         push(["profile": profile], to: "/api/global-blocklist", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -233,13 +415,11 @@ enum NetheraBackend {
     // lädt adblock-domains für das gesamte netzwerk:
     static func adBlockDomains() -> [AdBlockDomain] {
         migrateLegacyStorageIfNeeded()
-        guard isDatabaseAvailable() else { return [] }
         return load(adBlockDomainsKey, as: [AdBlockDomain].self) ?? defaultAdBlockDomains()
     }
 
     // speichert adblock-domains für das gesamte netzwerk:
     static func saveAdBlockDomains(_ domains: [AdBlockDomain]) {
-        guard isDatabaseAvailable() else { return }
         save(domains, forKey: adBlockDomainsKey)
         push(["domains": domains], to: "/api/adblock-domains", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -375,6 +555,7 @@ enum NetheraBackend {
         copyLegacyValue(from: "SavedDevicePresets", to: presetsKey)
         copyLegacyValue(from: "devices.groupBlocklists", to: groupBlocklistsKey)
         migrateLegacyRouterSettingsIfNeeded()
+        migrateLegacyAccountSettingsIfNeeded()
 
         defaults.set(true, forKey: didMigrateLegacyKey)
     }
@@ -390,10 +571,37 @@ enum NetheraBackend {
             notifications: defaults.object(forKey: "router.notifications") as? Bool ?? false,
             darkMode: defaults.object(forKey: "router.darkMode") as? Bool ?? false,
             frequency: defaults.string(forKey: "router.frequency") ?? "",
-            firewall: defaults.object(forKey: "router.firewall") as? Bool ?? false
+            firewall: defaults.object(forKey: "router.firewall") as? Bool ?? false,
+            model: "",
+            version: "",
+            firmwareUpdate: "",
+            resetStatus: "",
+            dnsConfiguration: "",
+            proxy: "",
+            ipAddress: "",
+            netmask: ""
         )
 
         save(settings, forKey: routerSettingsKey)
+    }
+
+    private static func migrateLegacyAccountSettingsIfNeeded() {
+        let defaults = UserDefaults.standard
+        guard defaults.data(forKey: accountSettingsKey) == nil else { return }
+
+        let settings = AccountSettings(
+            name: defaults.string(forKey: "account.name") ?? "",
+            email: defaults.string(forKey: "account.email") ?? "",
+            phone: defaults.string(forKey: "account.phone") ?? "",
+            password: defaults.string(forKey: "account.password") ?? "",
+            birthDate: "",
+            twoFactorStatus: "",
+            apiAccessStatus: "",
+            isLoggedIn: false,
+            authMode: ""
+        )
+
+        save(settings, forKey: accountSettingsKey)
     }
 
     private static func copyLegacyValue(from oldKey: String, to newKey: String) {

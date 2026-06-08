@@ -2,6 +2,7 @@ import SwiftUI
 
 struct AdBlockDashboardView: View {
     @State private var blockedDomains = NetheraBackend.adBlockDomains()
+    @State private var stats = NetheraBackend.loadAdBlockStats()
     @State private var newBlockedDomain = ""
 
     private func addBlockedDomain() {
@@ -31,6 +32,7 @@ struct AdBlockDashboardView: View {
 
     private func reloadBlockedDomains() {
         blockedDomains = NetheraBackend.adBlockDomains()
+        stats = NetheraBackend.loadAdBlockStats()
     }
 
     var body: some View {
@@ -82,8 +84,8 @@ struct AdBlockDashboardView: View {
 
     private var statsRow: some View {
         HStack(spacing: 10) {
-            AdBlockStatCard(number: "138", subtitle: "Heute geblockt")
-            AdBlockStatCard(number: "12,4K", subtitle: "Gesamt geblockt")
+            AdBlockStatCard(number: display(stats.blockedToday), subtitle: "Heute geblockt")
+            AdBlockStatCard(number: display(stats.blockedTotal), subtitle: "Gesamt geblockt")
         }
     }
 
@@ -151,7 +153,7 @@ struct AdBlockDashboardView: View {
 
     private var protectionCard: some View {
         HStack(spacing: 14) {
-            Text("97%")
+            Text(display(stats.blockedPercent))
                 .font(.system(size: 30, weight: .bold, design: .rounded))
                 .foregroundColor(.white)
 
@@ -170,6 +172,10 @@ struct AdBlockDashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(dashboardCardBackground)
+    }
+
+    private func display(_ value: String) -> String {
+        value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty ? "Keine Daten" : value
     }
 
     private var dashboardBackground: some View {

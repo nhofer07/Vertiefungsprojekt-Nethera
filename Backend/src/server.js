@@ -1,6 +1,7 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import { randomUUID } from "node:crypto";
 import { getDb } from "./db.js";
 
 dotenv.config();
@@ -63,11 +64,72 @@ async function loadRouterSettings(db) {
   const settings = await db.collection("routerSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
   if (settings) {
     const { key, ...value } = settings;
-    return value;
+    return {
+      model: "Nethera-7x9",
+      version: "Nv.1.0.1.2",
+      firmwareUpdate: "keins verfügbar",
+      resetStatus: "Nie",
+      dnsConfiguration: "Automatisch",
+      proxy: "Nie",
+      ipAddress: "192.168.0.224",
+      netmask: "255.255.255.0",
+      ...value
+    };
   }
 
   const meta = await db.collection("meta").findOne({ key: "routerSettings" }, { projection: { _id: 0 } });
-  return meta?.value ?? null;
+  return meta?.value ?? {
+    model: "Nethera-7x9",
+    version: "Nv.1.0.1.2",
+    firmwareUpdate: "keins verfügbar",
+    resetStatus: "Nie",
+    dnsConfiguration: "Automatisch",
+    proxy: "Nie",
+    ipAddress: "192.168.0.224",
+    netmask: "255.255.255.0"
+  };
+}
+
+async function loadSingletonWithDefault(db, collectionName, defaultValue, valueKey = "value") {
+  const doc = await db.collection(collectionName).findOne({ key: "main" }, { projection: { _id: 0 } });
+  if (doc?.[valueKey]) return doc[valueKey];
+
+  await db.collection(collectionName).updateOne(
+    { key: "main" },
+    { $set: { key: "main", [valueKey]: defaultValue } },
+    { upsert: true }
+  );
+  return defaultValue;
+}
+
+async function loadAccountSettings(db) {
+  return loadSingletonWithDefault(db, "accountSettings", {
+    name: "",
+    email: "",
+    phone: "",
+    password: "",
+    birthDate: "",
+    twoFactorStatus: "",
+    apiAccessStatus: "",
+    isLoggedIn: false,
+    authMode: ""
+  }, "settings");
+}
+
+async function loadSpeedMetrics(db) {
+  return loadSingletonWithDefault(db, "speedMetrics", {
+    download: "85.7 mb/s",
+    upload: "98.6 mb/s",
+    averageDownload: "72.2 mb/s"
+  });
+}
+
+async function loadAdBlockStats(db) {
+  return loadSingletonWithDefault(db, "adBlockStats", {
+    blockedToday: "138",
+    blockedTotal: "12,4K",
+    blockedPercent: "97%"
+  });
 }
 
 async function loadGlobalBlocklist(db) {
@@ -83,10 +145,10 @@ async function loadGlobalBlocklist(db) {
 async function loadAdBlockDomains(db) {
   const adBlock = await db.collection("adBlockDomains").findOne({ key: "main" }, { projection: { _id: 0 } });
   return adBlock?.domains ?? [
-    { id: crypto.randomUUID(), name: "googleads.g.doubleclick.net", time: "2m" },
-    { id: crypto.randomUUID(), name: "connect.facebook.com", time: "4m" },
-    { id: crypto.randomUUID(), name: "stats.g.doubleclick.net", time: "17m" },
-    { id: crypto.randomUUID(), name: "adservice.google.com", time: "29m" }
+    { id: randomUUID(), name: "googleads.g.doubleclick.net", time: "2m" },
+    { id: randomUUID(), name: "connect.facebook.com", time: "4m" },
+    { id: randomUUID(), name: "stats.g.doubleclick.net", time: "17m" },
+    { id: randomUUID(), name: "adservice.google.com", time: "29m" }
   ];
 }
 
@@ -94,6 +156,34 @@ async function saveRouterSettings(db, routerSettings) {
   await db.collection("routerSettings").updateOne(
     { key: "main" },
     { $set: { key: "main", ...routerSettings } },
+    { upsert: true }
+  );
+}
+
+async function saveAccountSettings(db, settings) {
+  await db.collection("accountSettings").updateOne(
+    { key: "main" },
+    { $set: { key: "main", settings } },
+    { upsert: true }
+  );
+}
+
+async function deleteAccountSettings(db) {
+  await db.collection("accountSettings").deleteMany({ key: "main" });
+}
+
+async function saveSpeedMetrics(db, value) {
+  await db.collection("speedMetrics").updateOne(
+    { key: "main" },
+    { $set: { key: "main", value } },
+    { upsert: true }
+  );
+}
+
+async function saveAdBlockStats(db, value) {
+  await db.collection("adBlockStats").updateOne(
+    { key: "main" },
+    { $set: { key: "main", value } },
     { upsert: true }
   );
 }
@@ -168,10 +258,13 @@ app.get("/health", asyncRoute(async (_request, response) => {
 // baut den kompletten zustand für die app in einer antwort zusammen:
 app.get("/api/state", asyncRoute(async (_request, response) => {
   const db = await getDb();
-  const [devices, groups, routerSettings, globalBlocklist, adBlockDomains, deviceSettings, presets, groupBlocklists] = await Promise.all([
+  const [devices, groups, routerSettings, accountSettings, speedMetrics, adBlockStats, globalBlocklist, adBlockDomains, deviceSettings, presets, groupBlocklists] = await Promise.all([
     db.collection("devices").find({}, { projection: { _id: 0 } }).toArray(),
     loadGroups(db),
     loadRouterSettings(db),
+    loadAccountSettings(db),
+    loadSpeedMetrics(db),
+    loadAdBlockStats(db),
     loadGlobalBlocklist(db),
     loadAdBlockDomains(db),
     db.collection("deviceSettings").find({}, { projection: { _id: 0 } }).toArray(),
@@ -185,6 +278,9 @@ app.get("/api/state", asyncRoute(async (_request, response) => {
     deviceSettings: Object.fromEntries(deviceSettings.map((item) => [item.deviceID, item.settings])),
     presets,
     groupBlocklists: Object.fromEntries(groupBlocklists.map((item) => [item.group, item.profile])),
+    accountSettings,
+    speedMetrics,
+    adBlockStats,
     globalBlocklist,
     adBlockDomains,
     routerSettings
@@ -219,6 +315,33 @@ app.put("/api/router-settings", asyncRoute(async (request, response) => {
   const routerSettings = request.body?.routerSettings ?? {};
   const db = await getDb();
   await saveRouterSettings(db, routerSettings);
+  response.json({ ok: true });
+}));
+
+app.put("/api/account-settings", asyncRoute(async (request, response) => {
+  const settings = request.body?.accountSettings ?? {};
+  const db = await getDb();
+  await saveAccountSettings(db, settings);
+  response.json({ ok: true });
+}));
+
+app.delete("/api/account-settings", asyncRoute(async (_request, response) => {
+  const db = await getDb();
+  await deleteAccountSettings(db);
+  response.json({ ok: true });
+}));
+
+app.put("/api/speed-metrics", asyncRoute(async (request, response) => {
+  const value = request.body?.speedMetrics ?? {};
+  const db = await getDb();
+  await saveSpeedMetrics(db, value);
+  response.json({ ok: true });
+}));
+
+app.put("/api/adblock-stats", asyncRoute(async (request, response) => {
+  const value = request.body?.adBlockStats ?? {};
+  const db = await getDb();
+  await saveAdBlockStats(db, value);
   response.json({ ok: true });
 }));
 

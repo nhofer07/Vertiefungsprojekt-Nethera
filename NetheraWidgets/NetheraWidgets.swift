@@ -250,7 +250,7 @@ struct NetheraGuestAccessWidgetView: View {
                     NetheraWidgetTitle(icon: "qrcode.viewfinder", title: "Nethera Gastzugang")
 
                     Text("Direkt verbinden")
-                        .font(.system(size: 22, weight: .black, design: .rounded))
+                        .font(.system(size: 22, weight: .bold, design: .rounded))
                         .foregroundStyle(NetheraWidgetColor.text)
                         .lineLimit(1)
                         .minimumScaleFactor(0.74)
@@ -293,7 +293,7 @@ struct NetheraFamilyFocusWidgetView: View {
                 VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 8) {
                         Image(systemName: "person.crop.circle.fill")
-                            .font(.system(size: 18, weight: .black))
+                            .font(.system(size: 18, weight: .bold))
                             .foregroundStyle(.black)
                             .frame(width: 28, height: 28)
                             .background(NetheraWidgetColor.cyan)
@@ -301,13 +301,13 @@ struct NetheraFamilyFocusWidgetView: View {
 
                         VStack(alignment: .leading, spacing: 1) {
                             Text(child.childName)
-                                .font(.system(size: 19, weight: .black, design: .rounded))
+                                .font(.system(size: 19, weight: .bold, design: .rounded))
                                 .foregroundStyle(NetheraWidgetColor.text)
                                 .lineLimit(1)
                                 .minimumScaleFactor(0.70)
 
                             Text("Nethera Geräteübersicht")
-                                .font(.system(size: 9, weight: .black))
+                                .font(.system(size: 9, weight: .bold))
                                 .foregroundStyle(NetheraWidgetColor.muted)
                                 .lineLimit(1)
                         }
@@ -318,19 +318,8 @@ struct NetheraFamilyFocusWidgetView: View {
                     HStack(spacing: 8) {
                         NetheraChildMainCard(child: child)
 
-                        VStack(spacing: 5) {
-                            NetheraCompactMetric(
-                                value: child.presetStatusText,
-                                label: "Aktives Preset",
-                                icon: "shield.lefthalf.filled"
-                            )
-                            NetheraCompactMetric(
-                                value: child.focusStartsAt,
-                                label: "Fokuszeit",
-                                icon: "moon.fill"
-                            )
-                        }
-                        .frame(width: 118)
+                        NetheraPresetFocusBox(child: child)
+                            .frame(width: 126)
                     }
                 }
 
@@ -347,37 +336,102 @@ struct NetheraFamilyFocusWidgetView: View {
     }
 }
 
-struct NetheraChildMainCard: View {
+struct NetheraPresetFocusBox: View {
     let child: NetheraChildWidgetSnapshot
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
-            HStack(spacing: 7) {
+            NetheraPresetFocusRow(
+                icon: "shield.lefthalf.filled",
+                label: "Aktives Preset",
+                value: child.presetStatusText
+            )
+
+            Divider()
+                .overlay(NetheraWidgetColor.line.opacity(0.65))
+
+            NetheraPresetFocusRow(
+                icon: "moon.fill",
+                label: "Fokuszeit",
+                value: child.focusStartsAt
+            )
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
+        .background(NetheraWidgetColor.card)
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(NetheraWidgetColor.line.opacity(0.75), lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+}
+
+struct NetheraPresetFocusRow: View {
+    let icon: String
+    let label: String
+    let value: String
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            HStack(spacing: 5) {
+                Image(systemName: icon)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(NetheraWidgetColor.cyan)
+
+                Text(label)
+                    .font(.system(size: 9, weight: .bold))
+                    .foregroundStyle(NetheraWidgetColor.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.60)
+            }
+
+            Text(value)
+                .font(.system(size: 12, weight: .bold, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(2)
+                .minimumScaleFactor(0.46)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+struct NetheraChildMainCard: View {
+    let child: NetheraChildWidgetSnapshot
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 6) {
                 Image(systemName: "info.circle.fill")
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(.black)
-                    .frame(width: 22, height: 22)
+                    .frame(width: 20, height: 20)
                     .background(NetheraWidgetColor.cyan)
-                    .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
 
                 Text("Infos")
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.62)
             }
 
             Text(child.infoText)
-                .font(.system(size: 16, weight: .black, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(3)
-                .minimumScaleFactor(0.54)
+                .minimumScaleFactor(0.60)
+                .lineSpacing(1)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
-        .padding(10)
+        .padding(.horizontal, 9)
+        .padding(.vertical, 8)
         .background(
             LinearGradient(
                 colors: [NetheraWidgetColor.card, Color.white.opacity(0.055)],
@@ -449,14 +503,14 @@ struct NetheraWidgetTitle: View {
     var body: some View {
         HStack(spacing: 7) {
             Image(systemName: icon)
-                .font(.system(size: 12, weight: .black))
+                .font(.system(size: 12, weight: .bold))
                 .foregroundStyle(.black)
                 .frame(width: 24, height: 24)
                 .background(NetheraWidgetColor.cyan)
                 .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
             Text(title)
-                .font(.system(size: 13, weight: .black, design: .rounded))
+                .font(.system(size: 13, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.74)
@@ -470,7 +524,7 @@ struct NetheraStatusLabel: View {
 
     var body: some View {
         Text(text)
-            .font(.system(size: 11, weight: .black, design: .rounded))
+            .font(.system(size: 11, weight: .bold, design: .rounded))
             .foregroundStyle(NetheraWidgetColor.text)
             .lineLimit(1)
             .minimumScaleFactor(0.72)
@@ -486,7 +540,7 @@ struct NetheraChildSwitchControls: View {
         HStack(spacing: 5) {
             Button(intent: NetheraPreviousChildIntent()) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.text)
                     .frame(width: 24, height: 24)
                     .background(NetheraWidgetColor.card)
@@ -496,7 +550,7 @@ struct NetheraChildSwitchControls: View {
 
             Button(intent: NetheraNextChildIntent()) {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.text)
                     .frame(width: 24, height: 24)
                     .background(NetheraWidgetColor.card)
@@ -519,7 +573,7 @@ struct NetheraChildPagerRail: View {
         VStack(spacing: 5) {
             Button(intent: NetheraPreviousChildIntent()) {
                 Image(systemName: "chevron.up")
-                    .font(.system(size: 9, weight: .black))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.text)
                     .frame(width: 22, height: 18)
                     .background(NetheraWidgetColor.card)
@@ -541,7 +595,7 @@ struct NetheraChildPagerRail: View {
 
             Button(intent: NetheraNextChildIntent()) {
                 Image(systemName: "chevron.down")
-                    .font(.system(size: 9, weight: .black))
+                    .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.text)
                     .frame(width: 22, height: 18)
                     .background(NetheraWidgetColor.card)
@@ -573,30 +627,32 @@ struct NetheraActionCard: View {
         VStack(alignment: .leading, spacing: 7) {
             HStack(spacing: 8) {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .black))
+                    .font(.system(size: 11, weight: .bold))
                     .foregroundStyle(.black)
-                    .frame(width: 25, height: 25)
+                    .frame(width: 23, height: 23)
                     .background(tint)
                     .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
 
                 Text(title)
-                    .font(.system(size: 11, weight: .black))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.76)
             }
 
             Text(text)
-                .font(.system(size: 17, weight: .black, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(3)
-                .minimumScaleFactor(0.56)
+                .minimumScaleFactor(0.60)
+                .lineSpacing(1)
                 .fixedSize(horizontal: false, vertical: true)
 
             Spacer(minLength: 0)
         }
         .frame(maxWidth: .infinity, minHeight: 86, alignment: .topLeading)
-        .padding(11)
+        .padding(.horizontal, 10)
+        .padding(.vertical, 9)
         .background(NetheraWidgetColor.card)
         .overlay {
             RoundedRectangle(cornerRadius: 8, style: .continuous)
@@ -615,7 +671,7 @@ struct NetheraStackMetric: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.cyan)
                 Text(label)
                     .font(.system(size: 10, weight: .bold))
@@ -625,7 +681,7 @@ struct NetheraStackMetric: View {
             }
 
             Text(value)
-                .font(.system(size: 14, weight: .black, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(2)
                 .minimumScaleFactor(0.50)
@@ -647,18 +703,18 @@ struct NetheraCompactMetric: View {
         VStack(alignment: .leading, spacing: 4) {
             HStack(spacing: 5) {
                 Image(systemName: icon)
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.cyan)
 
                 Text(label)
-                    .font(.system(size: 10, weight: .black))
+                    .font(.system(size: 10, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.muted)
                     .lineLimit(1)
                     .minimumScaleFactor(0.60)
             }
 
             Text(value)
-                .font(.system(size: 14, weight: .black, design: .rounded))
+                .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(2)
                 .minimumScaleFactor(0.48)
@@ -684,12 +740,12 @@ struct NetheraPlainRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title)
-                .font(.system(size: 10, weight: .black))
+                .font(.system(size: 10, weight: .bold))
                 .foregroundStyle(NetheraWidgetColor.muted)
                 .lineLimit(1)
 
             Text(value)
-                .font(monospaced ? .system(size: 14, weight: .black, design: .monospaced) : .system(size: 14, weight: .black, design: .rounded))
+                .font(monospaced ? .system(size: 14, weight: .bold, design: .monospaced) : .system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
                 .lineLimit(1)
                 .minimumScaleFactor(0.58)

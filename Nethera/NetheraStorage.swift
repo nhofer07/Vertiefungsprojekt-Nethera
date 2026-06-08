@@ -7,6 +7,7 @@ extension Notification.Name {
     static let groupBlocklistDidChange = Notification.Name("groupBlocklistDidChange")
     static let globalBlocklistDidChange = Notification.Name("globalBlocklistDidChange")
     static let adBlockDomainsDidChange = Notification.Name("adBlockDomainsDidChange")
+    static let accountSettingsDidChange = Notification.Name("accountSettingsDidChange")
 }
 
 struct AdBlockDomain: Codable, Identifiable, Equatable {

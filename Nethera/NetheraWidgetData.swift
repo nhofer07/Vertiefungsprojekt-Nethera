@@ -66,6 +66,10 @@ enum NetheraWidgetDataStore {
 
     // baut aus gespeicherten app-werten die widget-anzeige:
     private static func makeSnapshot() -> NetheraWidgetSnapshot {
+        guard NetheraBackend.loadAccountSettings().isLoggedIn else {
+            return loggedOutSnapshot()
+        }
+
         let devices = NetheraBackend.loadDevices()
         let presets = NetheraBackend.loadPresets()
         let settings = NetheraBackend.allDeviceSettings()
@@ -105,6 +109,34 @@ enum NetheraWidgetDataStore {
             activePreset: firstChildCard.activePreset,
             familyAction: firstChildCard.familyAction,
             childCards: childCards
+        )
+    }
+
+    private static func loggedOutSnapshot() -> NetheraWidgetSnapshot {
+        let lockedCard = NetheraChildWidgetSnapshot(
+            childName: "Abgemeldet",
+            screenTimeLeft: "Bitte anmelden",
+            focusStartsAt: "Keine Daten sichtbar",
+            activePreset: "Nicht angemeldet",
+            familyAction: "In Nethera anmelden"
+        )
+
+        return NetheraWidgetSnapshot(
+            unknownDevices: 0,
+            protectedDevices: 0,
+            blockedThreats: 0,
+            networkLoad: 0,
+            lastScan: "Nicht angemeldet",
+            nextNetworkAction: "In Nethera anmelden",
+            guestNetworkName: "Nicht angemeldet",
+            guestPassword: "Nicht angemeldet",
+            guestTimeLeft: "Bitte zuerst anmelden",
+            childName: lockedCard.childName,
+            screenTimeLeft: lockedCard.screenTimeLeft,
+            focusStartsAt: lockedCard.focusStartsAt,
+            activePreset: lockedCard.activePreset,
+            familyAction: lockedCard.familyAction,
+            childCards: [lockedCard]
         )
     }
 

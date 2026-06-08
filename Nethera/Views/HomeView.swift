@@ -122,9 +122,10 @@ struct HomeView: View {
 
                 Spacer()
 
-                Image(systemName: "network")
-                    .font(.headline.weight(.semibold))
-                    .foregroundColor(.black)
+                Image("Nethera_Logo")
+                    .resizable()
+                    .scaledToFit()
+                    .padding(6)
                     .frame(width: 40, height: 40)
                     .background(Color(red: 0.35, green: 0.75, blue: 0.9))
                     .clipShape(Circle())

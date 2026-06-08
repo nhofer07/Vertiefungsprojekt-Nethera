@@ -11,26 +11,34 @@ import UIKit
 struct SettingsView: View {
     @StateObject private var authentication = AuthenticationManager()
     @StateObject private var notificationManager = NotificationManager.shared
-    
+
     @State private var wifiName = ""
     @State private var password = ""
     @State private var guestPassword = ""
-    
+
     @State private var notifications = false
-    @State private var darkMode = false
-    
     @State private var frequency = ""
     @State private var firewall = false
-    @State private var backendURL = ""
-
+    @State private var model = ""
+    @State private var version = ""
+    @State private var firmwareUpdate = ""
+    @State private var dnsConfiguration = ""
+    @State private var proxy = ""
+    @State private var ipAddress = ""
+    @State private var netmask = ""
     @State private var savedWifiName = ""
     @State private var savedPassword = ""
     @State private var savedGuestPassword = ""
     @State private var savedNotifications = false
-    @State private var savedDarkMode = false
     @State private var savedFrequency = ""
     @State private var savedFirewall = false
-    @State private var savedBackendURL = ""
+    @State private var savedModel = ""
+    @State private var savedVersion = ""
+    @State private var savedFirmwareUpdate = ""
+    @State private var savedDnsConfiguration = ""
+    @State private var savedProxy = ""
+    @State private var savedIpAddress = ""
+    @State private var savedNetmask = ""
     @State private var showSavedMessage = false
     @State private var qrImage: UIImage?
     @State private var notificationDebugTapCount = 0
@@ -44,119 +52,121 @@ struct SettingsView: View {
         password != savedPassword ||
         guestPassword != savedGuestPassword ||
         notifications != savedNotifications ||
-        darkMode != savedDarkMode ||
         frequency != savedFrequency ||
         firewall != savedFirewall ||
-        backendURL != savedBackendURL
+        model != savedModel ||
+        version != savedVersion ||
+        firmwareUpdate != savedFirmwareUpdate ||
+        dnsConfiguration != savedDnsConfiguration ||
+        proxy != savedProxy ||
+        ipAddress != savedIpAddress ||
+        netmask != savedNetmask
     }
-    
+
     var body: some View {
-        NavigationStack {
-            ZStack {
-                settingsBackground
-                
-                ScrollView {
-                    VStack(spacing: 18) {
-                        PageHeaderView(title: "Router-Einstellungen", showBackButton: true) {
-                            Button {
-                                saveSettings()
-                            } label: {
-                                Image(systemName: hasUnsavedChanges ? "checkmark.circle.fill" : "checkmark.circle")
-                                    .font(.title2.weight(.bold))
-                                    .foregroundColor(hasUnsavedChanges ? accentColor : .white.opacity(0.45))
-                                    .frame(width: 30, height: 30)
-                                    .background(Color.white.opacity(hasUnsavedChanges ? 0.14 : 0.08))
-                                    .clipShape(Circle())
-                            }
-                            .buttonStyle(.plain)
-                            .disabled(!hasUnsavedChanges)
+        ZStack {
+            settingsBackground
+
+            ScrollView(.vertical, showsIndicators: false) {
+                VStack(spacing: 18) {
+                    PageHeaderView(title: "Router-Einstellungen", showBackButton: true) {
+                        Button {
+                            saveSettings()
+                        } label: {
+                            Image(systemName: hasUnsavedChanges ? "checkmark.circle.fill" : "checkmark.circle")
+                                .font(.title2.weight(.bold))
+                                .foregroundColor(hasUnsavedChanges ? accentColor : .white.opacity(0.45))
+                                .frame(width: 30, height: 30)
+                                .background(Color.white.opacity(hasUnsavedChanges ? 0.14 : 0.08))
+                                .clipShape(Circle())
                         }
-
-                        if showSavedMessage {
-                            Text("Einstellungen gespeichert")
-                                .font(.caption.weight(.semibold))
-                                .foregroundColor(accentColor)
-                        }
-                        
-                        VStack(spacing: 18) {
-                            SettingsHeroCard(isUnlocked: authentication.isUnlocked, notificationsEnabled: notifications)
-
-                            SectionCard(title: "Basis", icon: "wifi") {
-                                
-                                EditableTextRow(icon: "wifi", label: "WLAN-Name", text: $wifiName)
-                                ToggleRow(icon: "moon.fill", label: "Darkmode", isOn: $darkMode)
-                                
-                                SettingRow(icon: "network", label: "Modell", value: "Nethera-7x9", isEditable: false)
-                                SettingRow(icon: "gearshape", label: "Version", value: "Nv.1.0.1.2", isEditable: false)
-                            }
-
-                            SectionCard(title: "Sensible Routerdaten", icon: "lock.shield") {
-                                SensitiveAccessCard(authentication: authentication)
-
-                                if authentication.isUnlocked {
-                                    EditableTextRow(icon: "lock.open", label: "Router-Passwort", text: $password)
-                                    EditableTextRow(icon: "person.2", label: "Gastnetz-PW", text: $guestPassword)
-                                } else {
-                                    LockedSensitiveRow(icon: "lock", label: "Router-Passwort")
-                                    LockedSensitiveRow(icon: "person.2", label: "Gastnetz-PW")
-                                }
-                            }
-
-                            SectionCard(title: "Gast-WLAN", icon: "qrcode") {
-                                GuestWiFiShareCard(
-                                    ssid: wifiName + " Guest",
-                                    password: guestPassword,
-                                    qrImage: qrImage,
-                                    isUnlocked: authentication.isUnlocked
-                                )
-                            }
-
-                            SectionCard(title: "Mitteilungen", icon: "bell.badge") {
-                                ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
-                                    .onChange(of: notifications) {
-                                        notificationManager.automaticWarningsEnabled = notifications
-                                        if notifications {
-                                            notificationManager.requestPermission()
-                                        }
-                                    }
-
-                                NotificationPermissionRow(notificationManager: notificationManager)
-                                    .onTapGesture {
-                                        revealNotificationTestsIfNeeded()
-                                    }
-
-                                if showNotificationTests {
-                                    NotificationTestPanel(notificationManager: notificationManager)
-                                        .transition(.opacity.combined(with: .move(edge: .top)))
-                                }
-                            }
-                            
-                            // Erweiterte Einstellungen
-                            SectionCard(title: "Erweitert", icon: "slider.horizontal.3") {
-                                
-                                PickerRow(icon: "dot.radiowaves.left.and.right", label: "Frequenz", selection: $frequency, options: ["2.4 GHz", "5 GHz", "Auto"])
-                                ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
-                                EditableTextRow(icon: "server.rack", label: "Backend", text: $backendURL)
-                                
-                                SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: "keins verfügbar", isEditable: true)
-                                SettingRow(icon: "trash", label: "Reset", value: "Nie", isEditable: true)
-                                SettingRow(icon: "network", label: "DNS-Konfiguration", value: "Automatisch", isEditable: true)
-                                SettingRow(icon: "server.rack", label: "Proxy", value: "Nie", isEditable: true)
-                                SettingRow(icon: "ipaddress", label: "IP-Adresse", value: "192.168.0.224", isEditable: false)
-                                SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: "255.255.255.0", isEditable: false)
-                            }
-                            
-                            Spacer(minLength: 100)
-                        }
-                        .padding()
+                        .buttonStyle(.plain)
+                        .disabled(!hasUnsavedChanges)
                     }
+
+                    if showSavedMessage {
+                        Text("Einstellungen gespeichert")
+                            .font(.caption.weight(.semibold))
+                            .foregroundColor(accentColor)
+                    }
+
+                    VStack(spacing: 18) {
+                        SettingsHeroCard(isUnlocked: authentication.isUnlocked, notificationsEnabled: notifications)
+
+                        SectionCard(title: "Basis", icon: "wifi") {
+
+                            EditableTextRow(icon: "wifi", label: "WLAN-Name", text: $wifiName)
+                            SettingRow(icon: "network", label: "Modell", value: model, isEditable: false)
+                            SettingRow(icon: "gearshape", label: "Version", value: version, isEditable: false)
+                        }
+
+                        SectionCard(title: "Sensible Routerdaten", icon: "lock.shield") {
+                            SensitiveAccessCard(authentication: authentication)
+
+                            if authentication.isUnlocked {
+                                EditableTextRow(icon: "lock.open", label: "Router-Passwort", text: $password)
+                                EditableTextRow(icon: "person.2", label: "Gastnetz-PW", text: $guestPassword)
+                            } else {
+                                LockedSensitiveRow(icon: "lock", label: "Router-Passwort")
+                                LockedSensitiveRow(icon: "person.2", label: "Gastnetz-PW")
+                            }
+                        }
+
+                        SectionCard(title: "Gast-WLAN", icon: "qrcode") {
+                            GuestWiFiShareCard(
+                                ssid: wifiName + " Guest",
+                                password: guestPassword,
+                                qrImage: qrImage,
+                                isUnlocked: authentication.isUnlocked
+                            )
+                        }
+
+                        SectionCard(title: "Mitteilungen", icon: "bell.badge") {
+                            ToggleRow(icon: "bell", label: "Meldungen", isOn: $notifications)
+                                .onChange(of: notifications) {
+                                    notificationManager.automaticWarningsEnabled = notifications
+                                    if notifications {
+                                        notificationManager.requestPermission()
+                                    }
+                                }
+
+                            NotificationPermissionRow(notificationManager: notificationManager)
+                                .onTapGesture {
+                                    revealNotificationTestsIfNeeded()
+                                }
+
+                            if showNotificationTests {
+                                NotificationTestPanel(notificationManager: notificationManager)
+                                    .transition(.opacity.combined(with: .move(edge: .top)))
+                            }
+                        }
+
+                        SectionCard(title: "Netzwerk", icon: "slider.horizontal.3") {
+                            FrequencyRow(selection: $frequency)
+                            ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
+                            SettingRow(icon: "network", label: "DNS", value: dnsConfiguration, isEditable: false)
+                            SettingRow(icon: "server.rack", label: "Proxy", value: proxy, isEditable: false)
+                            SettingRow(icon: "ipaddress", label: "IP-Adresse", value: ipAddress, isEditable: false)
+                            SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: netmask, isEditable: false)
+                        }
+
+                        SectionCard(title: "System", icon: "arrow.triangle.2.circlepath") {
+                            SettingRow(icon: "arrow.triangle.2.circlepath", label: "Firmware Update", value: firmwareUpdate, isEditable: false)
+                        }
+
+                        Spacer(minLength: 100)
+                    }
+                    .padding()
                 }
+                .frame(maxWidth: .infinity)
             }
-            .toolbarColorScheme(.dark, for: .navigationBar)
-            .navigationBarBackButtonHidden(true)
-            .toolbar(.hidden, for: .navigationBar)
-            .navigationBarTitleDisplayMode(.inline)
+            .frame(maxWidth: .infinity)
+            .clipped()
         }
+        .toolbarColorScheme(.dark, for: .navigationBar)
+        .navigationBarBackButtonHidden(true)
+        .toolbar(.hidden, for: .navigationBar)
+        .navigationBarTitleDisplayMode(.inline)
         .onAppear {
             loadSettings()
             notificationManager.refreshAuthorizationStatus()
@@ -200,22 +210,30 @@ struct SettingsView: View {
                 .offset(x: -150, y: 320)
         }
     }
-    
+
     // save funktion:
     func saveSettings() {
         let wasFirewallEnabled = savedFirewall
+        let currentSettings = NetheraBackend.loadRouterSettings()
 
         let settings = NetheraBackend.RouterSettings(
             wifiName: wifiName,
             password: password,
             guestPassword: guestPassword,
             notifications: notifications,
-            darkMode: darkMode,
+            darkMode: currentSettings.darkMode,
             frequency: frequency,
-            firewall: firewall
+            firewall: firewall,
+            model: model,
+            version: version,
+            firmwareUpdate: firmwareUpdate,
+            resetStatus: currentSettings.resetStatus,
+            dnsConfiguration: dnsConfiguration,
+            proxy: proxy,
+            ipAddress: ipAddress,
+            netmask: netmask
         )
 
-        NetheraBackend.saveBackendBaseURL(backendURL)
         NetheraBackend.saveRouterSettings(settings)
         notificationManager.automaticWarningsEnabled = notifications
         notificationManager.handleFirewallChange(wasEnabled: wasFirewallEnabled, isEnabled: firewall)
@@ -224,11 +242,15 @@ struct SettingsView: View {
         savedPassword = password
         savedGuestPassword = guestPassword
         savedNotifications = notifications
-        savedDarkMode = darkMode
         savedFrequency = frequency
         savedFirewall = firewall
-        savedBackendURL = backendURL
-
+        savedModel = model
+        savedVersion = version
+        savedFirmwareUpdate = firmwareUpdate
+        savedDnsConfiguration = dnsConfiguration
+        savedProxy = proxy
+        savedIpAddress = ipAddress
+        savedNetmask = netmask
         showSavedMessage = true
 
         // debug:
@@ -237,10 +259,8 @@ struct SettingsView: View {
         print("Passwort: \(password)")
         print("Gastnetz: \(guestPassword)")
         print("Meldungen: \(notifications)")
-        print("Darkmode: \(darkMode)")
         print("Frequenz: \(frequency)")
         print("Firewall: \(firewall)")
-        print("Backend: \(backendURL)")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             showSavedMessage = false
@@ -254,19 +274,29 @@ struct SettingsView: View {
         password = settings.password
         guestPassword = settings.guestPassword
         notifications = settings.notifications
-        darkMode = settings.darkMode
         frequency = settings.frequency
         firewall = settings.firewall
-        backendURL = NetheraBackend.currentBackendBaseURL()
+        model = settings.model
+        version = settings.version
+        firmwareUpdate = settings.firmwareUpdate
+        dnsConfiguration = settings.dnsConfiguration
+        proxy = settings.proxy
+        ipAddress = settings.ipAddress
+        netmask = settings.netmask
 
         savedWifiName = wifiName
         savedPassword = password
         savedGuestPassword = guestPassword
         savedNotifications = notifications
-        savedDarkMode = darkMode
         savedFrequency = frequency
         savedFirewall = firewall
-        savedBackendURL = backendURL
+        savedModel = model
+        savedVersion = version
+        savedFirmwareUpdate = firmwareUpdate
+        savedDnsConfiguration = dnsConfiguration
+        savedProxy = proxy
+        savedIpAddress = ipAddress
+        savedNetmask = netmask
         notificationManager.automaticWarningsEnabled = notifications
     }
 
@@ -294,13 +324,13 @@ struct SectionCard<Content: View>: View {
     let title: String
     let icon: String?
     let content: Content
-    
+
     init(title: String, icon: String? = nil, @ViewBuilder content: () -> Content) {
         self.title = title
         self.icon = icon
         self.content = content()
     }
-    
+
     var body: some View {
         VStack(alignment: .leading, spacing: 13) {
             HStack(spacing: 9) {
@@ -317,7 +347,7 @@ struct SectionCard<Content: View>: View {
                     .font(.headline.weight(.bold))
                     .foregroundColor(.white)
             }
-            
+
             VStack(spacing: 10) {
                 content
             }
@@ -401,20 +431,20 @@ struct SettingRow: View {
     let label: String
     let value: String
     var isEditable: Bool = true
-    
+
     var body: some View {
         HStack {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                 .frame(width: 30)
-            
+
             Text(label)
                 .foregroundColor(.white)
                 .font(.system(size: 16, weight: .semibold))
-            
+
             Spacer()
-            
+
             Text(value)
                 .foregroundColor(isEditable ? .white.opacity(0.9) : .white.opacity(0.6))
                 .font(.system(size: 16, weight: .medium))
@@ -431,20 +461,20 @@ struct EditableTextRow: View {
     let icon: String
     let label: String
     @Binding var text: String
-    
+
     var body: some View {
         HStack {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                 .frame(width: 30)
-            
+
             Text(label)
                 .foregroundColor(.white)
                 .font(.system(size: 16, weight: .semibold))
-            
+
             Spacer()
-            
+
             TextField("", text: $text)
                 .multilineTextAlignment(.trailing)
                 .foregroundColor(.white)
@@ -460,20 +490,20 @@ struct EditableSecureRow: View {
     let icon: String
     let label: String
     @Binding var text: String
-    
+
     var body: some View {
         HStack {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                 .frame(width: 30)
-            
+
             Text(label)
                 .foregroundColor(.white)
                 .font(.system(size: 16, weight: .semibold))
-            
+
             Spacer()
-            
+
             SecureField("", text: $text)
                 .multilineTextAlignment(.trailing)
                 .foregroundColor(.white)
@@ -489,7 +519,7 @@ struct ToggleRow: View {
     let icon: String
     let label: String
     @Binding var isOn: Bool
-    
+
     var body: some View {
         Toggle(isOn: $isOn) {
             HStack {
@@ -497,7 +527,7 @@ struct ToggleRow: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                     .frame(width: 30)
-                
+
                 Text(label)
                     .foregroundColor(.white)
                     .font(.system(size: 16, weight: .semibold))
@@ -515,20 +545,20 @@ struct PickerRow: View {
     let label: String
     @Binding var selection: String
     let options: [String]
-    
+
     var body: some View {
         HStack {
             Image(systemName: icon)
                 .font(.subheadline.weight(.semibold))
                 .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                 .frame(width: 30)
-            
+
             Text(label)
                 .foregroundColor(.white)
                 .font(.system(size: 16, weight: .semibold))
-            
+
             Spacer()
-            
+
             Picker("", selection: $selection) {
                 ForEach(options, id: \.self) {
                     Text($0)
@@ -536,6 +566,50 @@ struct PickerRow: View {
             }
             .pickerStyle(.menu)
             .tint(.white)
+        }
+        .padding(12)
+        .background(Color.white.opacity(0.12))
+        .cornerRadius(16)
+    }
+}
+
+struct FrequencyRow: View {
+    @Binding var selection: String
+
+    private let options = ["2.4 GHz", "5 GHz", "Auto"]
+    private let accentColor = Color(red: 0.35, green: 0.75, blue: 0.9)
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            HStack(spacing: 10) {
+                Image(systemName: "dot.radiowaves.left.and.right")
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundColor(accentColor)
+                    .frame(width: 30)
+
+                Text("Frequenz")
+                    .foregroundColor(.white)
+                    .font(.system(size: 16, weight: .semibold))
+
+                Spacer()
+            }
+
+            HStack(spacing: 8) {
+                ForEach(options, id: \.self) { option in
+                    Button {
+                        selection = option
+                    } label: {
+                        Text(option)
+                            .font(.caption.weight(.bold))
+                            .foregroundColor(selection == option ? .black : .white.opacity(0.72))
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 9)
+                            .background(selection == option ? accentColor : Color.white.opacity(0.08))
+                            .clipShape(RoundedRectangle(cornerRadius: 12, style: .continuous))
+                    }
+                    .buttonStyle(.plain)
+                }
+            }
         }
         .padding(12)
         .background(Color.white.opacity(0.12))
