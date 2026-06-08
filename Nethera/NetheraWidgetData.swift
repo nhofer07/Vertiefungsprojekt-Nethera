@@ -66,6 +66,10 @@ enum NetheraWidgetDataStore {
 
     // baut aus gespeicherten app-werten die widget-anzeige:
     private static func makeSnapshot() -> NetheraWidgetSnapshot {
+        guard NetheraBackend.isDatabaseAvailable() else {
+            return offlineSnapshot()
+        }
+
         guard NetheraBackend.loadAccountSettings().isLoggedIn else {
             return loggedOutSnapshot()
         }
@@ -74,21 +78,21 @@ enum NetheraWidgetDataStore {
         let presets = NetheraBackend.loadPresets()
         let settings = NetheraBackend.allDeviceSettings()
         let routerSettings = NetheraBackend.loadRouterSettings()
+        let adBlockStats = NetheraBackend.loadAdBlockStats()
         let selectedDeviceIDs = selectedWidgetDeviceIDs()
         let selectedDevices = devices.filter { selectedDeviceIDs.contains($0.id) }
         let widgetDevices = selectedDevices.isEmpty ? devices : selectedDevices
         let childCards = widgetDevices.map { childCard(for: $0, presets: presets, settings: settings) }
-        let databaseAvailable = NetheraBackend.isDatabaseAvailable()
         let firstChildCard = childCards.first ?? NetheraChildWidgetSnapshot(
-            childName: databaseAvailable ? "Kein Gerät" : "Offline",
+            childName: "Kein Gerät",
             screenTimeLeft: "Kein Preset aktiv",
             focusStartsAt: "Keine Fokuszeit geplant",
             activePreset: "Kein Preset aktiv",
-            familyAction: databaseAvailable ? "Keine Widget-Info verfügbar" : "Datenbank nicht erreichbar"
+            familyAction: "Keine Widget-Info verfügbar"
         )
         let unknownDevices = devices.filter { $0.group == "Nicht zugeordnet" || $0.group == "Neu verbunden" }.count
         let protectedDevices = devices.filter { $0.group != "Ignoriert" }.count
-        let blockedThreats = estimateBlockedThreats(from: presets, settings: settings)
+        let blockedThreats = metricValue(from: adBlockStats.blockedToday)
         let networkLoad = estimateNetworkLoad(from: devices)
         let guestName = routerSettings.wifiName.isEmpty ? "Nicht gespeichert" : "\(routerSettings.wifiName) Guest"
         let guestPassword = routerSettings.guestPassword.isEmpty ? "Nicht gespeichert" : routerSettings.guestPassword
@@ -98,7 +102,7 @@ enum NetheraWidgetDataStore {
             protectedDevices: protectedDevices,
             blockedThreats: blockedThreats,
             networkLoad: networkLoad,
-            lastScan: databaseAvailable ? (devices.isEmpty ? "Noch nicht synchronisiert" : "gerade eben") : "Datenbank nicht erreichbar",
+            lastScan: devices.isEmpty ? "Noch nicht synchronisiert" : "gerade eben",
             nextNetworkAction: networkAction(for: unknownDevices, devices: devices),
             guestNetworkName: guestName,
             guestPassword: guestPassword,
@@ -109,6 +113,34 @@ enum NetheraWidgetDataStore {
             activePreset: firstChildCard.activePreset,
             familyAction: firstChildCard.familyAction,
             childCards: childCards
+        )
+    }
+
+    private static func offlineSnapshot() -> NetheraWidgetSnapshot {
+        let offlineCard = NetheraChildWidgetSnapshot(
+            childName: "Backend offline",
+            screenTimeLeft: "Keine Daten verfügbar",
+            focusStartsAt: "Keine Verbindung",
+            activePreset: "Datenbank nicht erreichbar",
+            familyAction: "Backend starten und Nethera öffnen"
+        )
+
+        return NetheraWidgetSnapshot(
+            unknownDevices: 0,
+            protectedDevices: 0,
+            blockedThreats: 0,
+            networkLoad: 0,
+            lastScan: "Datenbank nicht erreichbar",
+            nextNetworkAction: "Backend-Verbindung prüfen",
+            guestNetworkName: "Nicht verfügbar",
+            guestPassword: "Nicht verfügbar",
+            guestTimeLeft: "Datenbank nicht erreichbar",
+            childName: offlineCard.childName,
+            screenTimeLeft: offlineCard.screenTimeLeft,
+            focusStartsAt: offlineCard.focusStartsAt,
+            activePreset: offlineCard.activePreset,
+            familyAction: offlineCard.familyAction,
+            childCards: [offlineCard]
         )
     }
 
@@ -161,11 +193,12 @@ enum NetheraWidgetDataStore {
         )
     }
 
-    // schätzt blockierte treffer aus aktiven blocklist-regeln:
-    private static func estimateBlockedThreats(from presets: [DevicePreset], settings: [String: DeviceSettings]) -> Int {
-        let presetRules = presets.reduce(0) { $0 + $1.blocklist.totalRuleCount }
-        let deviceRules = settings.values.reduce(0) { $0 + $1.blocklist.totalRuleCount }
-        return max(0, (presetRules + deviceRules) * 12)
+    // macht aus backend-statistiken eine zahl fuer das widget:
+    private static func metricValue(from value: String) -> Int {
+        let normalized = value.replacingOccurrences(of: ",", with: ".").uppercased()
+        let multiplier = normalized.contains("K") ? 1_000.0 : 1.0
+        let numeric = normalized.filter { $0.isNumber || $0 == "." }
+        return Int((Double(numeric) ?? 0) * multiplier)
     }
 
     // schätzt die last anhand der aktiven geräte:

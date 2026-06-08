@@ -297,12 +297,14 @@ enum NetheraBackend {
     // lädt router- und gast-wlan-einstellungen:
     static func loadRouterSettings() -> RouterSettings {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return RouterSettings() }
         return load(routerSettingsKey, as: RouterSettings.self) ?? RouterSettings()
     }
 
     // speichert router- und gast-wlan-einstellungen:
     static func saveRouterSettings(_ settings: RouterSettings) {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return }
         save(settings, forKey: routerSettingsKey)
         push(["routerSettings": settings], to: "/api/router-settings", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -317,6 +319,7 @@ enum NetheraBackend {
     // speichert konto-einstellungen:
     static func saveAccountSettings(_ settings: AccountSettings) {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return }
         save(settings, forKey: accountSettingsKey)
         push(["accountSettings": settings], to: "/api/account-settings", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -324,6 +327,7 @@ enum NetheraBackend {
     }
 
     static func deleteAccountSettings() {
+        guard isDatabaseAvailable() else { return }
         UserDefaults.standard.removeObject(forKey: accountSettingsKey)
         pushEmpty(to: "/api/account-settings", method: "DELETE")
         NetheraWidgetDataStore.syncSnapshot()
@@ -332,20 +336,24 @@ enum NetheraBackend {
 
     static func loadSpeedMetrics() -> SpeedMetrics {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return SpeedMetrics() }
         return load(speedMetricsKey, as: SpeedMetrics.self) ?? SpeedMetrics()
     }
 
     static func saveSpeedMetrics(_ metrics: SpeedMetrics) {
+        guard isDatabaseAvailable() else { return }
         save(metrics, forKey: speedMetricsKey)
         push(["speedMetrics": metrics], to: "/api/speed-metrics", method: "PUT")
     }
 
     static func loadAdBlockStats() -> AdBlockStats {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return AdBlockStats() }
         return load(adBlockStatsKey, as: AdBlockStats.self) ?? AdBlockStats()
     }
 
     static func saveAdBlockStats(_ stats: AdBlockStats) {
+        guard isDatabaseAvailable() else { return }
         save(stats, forKey: adBlockStatsKey)
         push(["adBlockStats": stats], to: "/api/adblock-stats", method: "PUT")
     }
@@ -401,11 +409,13 @@ enum NetheraBackend {
     // lädt globale blocklist für das gesamte netzwerk:
     static func globalBlocklist() -> BlocklistProfile {
         migrateLegacyStorageIfNeeded()
+        guard isDatabaseAvailable() else { return BlocklistProfile() }
         return load(globalBlocklistKey, as: BlocklistProfile.self) ?? BlocklistProfile()
     }
 
     // speichert globale blocklist für das gesamte netzwerk:
     static func saveGlobalBlocklist(_ profile: BlocklistProfile) {
+        guard isDatabaseAvailable() else { return }
         save(profile, forKey: globalBlocklistKey)
         push(["profile": profile], to: "/api/global-blocklist", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -415,11 +425,13 @@ enum NetheraBackend {
     // lädt adblock-domains für das gesamte netzwerk:
     static func adBlockDomains() -> [AdBlockDomain] {
         migrateLegacyStorageIfNeeded()
-        return load(adBlockDomainsKey, as: [AdBlockDomain].self) ?? defaultAdBlockDomains()
+        guard isDatabaseAvailable() else { return [] }
+        return load(adBlockDomainsKey, as: [AdBlockDomain].self) ?? []
     }
 
     // speichert adblock-domains für das gesamte netzwerk:
     static func saveAdBlockDomains(_ domains: [AdBlockDomain]) {
+        guard isDatabaseAvailable() else { return }
         save(domains, forKey: adBlockDomainsKey)
         push(["domains": domains], to: "/api/adblock-domains", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
@@ -491,15 +503,6 @@ enum NetheraBackend {
 
     private static var baseURL: String {
         backendBaseURLCandidates().first ?? defaultBaseURL
-    }
-
-    private static func defaultAdBlockDomains() -> [AdBlockDomain] {
-        [
-            AdBlockDomain(name: "googleads.g.doubleclick.net", time: "2m"),
-            AdBlockDomain(name: "connect.facebook.com", time: "4m"),
-            AdBlockDomain(name: "stats.g.doubleclick.net", time: "17m"),
-            AdBlockDomain(name: "adservice.google.com", time: "29m")
-        ]
     }
 
     private static var defaultBaseURL: String {
@@ -646,11 +649,13 @@ enum NetheraBackend {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let error {
                 print("NetheraBackend push failed \(method) \(path): \(error.localizedDescription)")
+                markDatabaseUnavailable()
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
                 print("NetheraBackend push failed \(method) \(path): status \(httpResponse.statusCode)")
+                markDatabaseUnavailable()
                 return
             }
 
@@ -667,11 +672,13 @@ enum NetheraBackend {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let error {
                 print("NetheraBackend push failed \(method) \(path): \(error.localizedDescription)")
+                markDatabaseUnavailable()
                 return
             }
 
             if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
                 print("NetheraBackend push failed \(method) \(path): status \(httpResponse.statusCode)")
+                markDatabaseUnavailable()
                 return
             }
 

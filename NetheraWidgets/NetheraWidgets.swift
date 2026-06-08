@@ -214,19 +214,11 @@ struct NetheraDailyCheckWidgetView: View {
                         tint: entry.snapshot.unknownDevices == 0 ? NetheraWidgetColor.green : NetheraWidgetColor.yellow
                     )
 
-                    VStack(spacing: 8) {
-                        NetheraStackMetric(
-                            value: "\(entry.snapshot.protectedDevices)",
-                            label: "Geräte geschützt",
-                            icon: "desktopcomputer"
-                        )
-                        NetheraStackMetric(
-                            value: "\(entry.snapshot.blockedThreats)",
-                            label: "Bedrohungen geblockt",
-                            icon: "nosign"
-                        )
-                    }
-                    .frame(width: 116)
+                    NetheraProtectionSummary(
+                        protectedDevices: entry.snapshot.protectedDevices,
+                        blockedThreats: entry.snapshot.blockedThreats
+                    )
+                    .frame(width: 124)
                 }
             }
         }
@@ -315,12 +307,7 @@ struct NetheraFamilyFocusWidgetView: View {
                         Spacer(minLength: 0)
                     }
 
-                    HStack(spacing: 8) {
-                        NetheraChildMainCard(child: child)
-
-                        NetheraPresetFocusBox(child: child)
-                            .frame(width: 126)
-                    }
+                    NetheraDeviceOverviewCard(child: child)
                 }
 
                 if entry.snapshot.childCards.count > 1 {
@@ -336,105 +323,45 @@ struct NetheraFamilyFocusWidgetView: View {
     }
 }
 
-struct NetheraPresetFocusBox: View {
+struct NetheraDeviceOverviewCard: View {
     let child: NetheraChildWidgetSnapshot
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 7) {
-            NetheraPresetFocusRow(
-                icon: "shield.lefthalf.filled",
-                label: "Aktives Preset",
-                value: child.presetStatusText
-            )
-
-            Divider()
-                .overlay(NetheraWidgetColor.line.opacity(0.65))
-
-            NetheraPresetFocusRow(
-                icon: "moon.fill",
-                label: "Fokuszeit",
-                value: child.focusStartsAt
-            )
-
-            Spacer(minLength: 0)
-        }
-        .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 8)
-        .background(NetheraWidgetColor.card)
-        .overlay {
-            RoundedRectangle(cornerRadius: 8, style: .continuous)
-                .stroke(NetheraWidgetColor.line.opacity(0.75), lineWidth: 1)
-        }
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
-    }
-}
-
-struct NetheraPresetFocusRow: View {
-    let icon: String
-    let label: String
-    let value: String
-
-    var body: some View {
-        VStack(alignment: .leading, spacing: 2) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
+        HStack(spacing: 10) {
+            VStack(alignment: .leading, spacing: 4) {
+                Label("Letzte Aktivität", systemImage: "info.circle.fill")
                     .font(.system(size: 9, weight: .bold))
                     .foregroundStyle(NetheraWidgetColor.cyan)
-
-                Text(label)
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(NetheraWidgetColor.muted)
                     .lineLimit(1)
-                    .minimumScaleFactor(0.60)
+
+                Text(child.infoText)
+                    .font(.system(size: 13, weight: .bold, design: .rounded))
+                    .foregroundStyle(NetheraWidgetColor.text)
+                    .lineLimit(3)
+                    .minimumScaleFactor(0.58)
+                    .fixedSize(horizontal: false, vertical: true)
             }
+            .frame(maxWidth: .infinity, alignment: .topLeading)
 
-            Text(value)
-                .font(.system(size: 12, weight: .bold, design: .rounded))
-                .foregroundStyle(NetheraWidgetColor.text)
-                .lineLimit(2)
-                .minimumScaleFactor(0.46)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-}
+            Rectangle()
+                .fill(NetheraWidgetColor.line)
+                .frame(width: 1)
 
-struct NetheraChildMainCard: View {
-    let child: NetheraChildWidgetSnapshot
+            VStack(alignment: .leading, spacing: 5) {
+                deviceDetail(icon: "shield.lefthalf.filled", label: "Preset", value: child.presetStatusText)
 
-    var body: some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(spacing: 6) {
-                Image(systemName: "info.circle.fill")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(.black)
-                    .frame(width: 20, height: 20)
-                    .background(NetheraWidgetColor.cyan)
-                    .clipShape(RoundedRectangle(cornerRadius: 6, style: .continuous))
+                Divider()
+                    .overlay(NetheraWidgetColor.line)
 
-                Text("Infos")
-                    .font(.system(size: 9, weight: .bold))
-                    .foregroundStyle(NetheraWidgetColor.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
+                deviceDetail(icon: "moon.fill", label: "Fokus", value: child.focusStartsAt)
             }
-
-            Text(child.infoText)
-                .font(.system(size: 14, weight: .bold, design: .rounded))
-                .foregroundStyle(NetheraWidgetColor.text)
-                .lineLimit(3)
-                .minimumScaleFactor(0.60)
-                .lineSpacing(1)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Spacer(minLength: 0)
+            .frame(width: 116, alignment: .leading)
         }
         .frame(maxWidth: .infinity, minHeight: 74, alignment: .topLeading)
-        .padding(.horizontal, 9)
-        .padding(.vertical, 8)
+        .padding(10)
         .background(
             LinearGradient(
-                colors: [NetheraWidgetColor.card, Color.white.opacity(0.055)],
+                colors: [Color.white.opacity(0.11), NetheraWidgetColor.card],
                 startPoint: .topLeading,
                 endPoint: .bottomTrailing
             )
@@ -444,6 +371,21 @@ struct NetheraChildMainCard: View {
                 .stroke(NetheraWidgetColor.line, lineWidth: 1)
         }
         .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func deviceDetail(icon: String, label: String, value: String) -> some View {
+        VStack(alignment: .leading, spacing: 1) {
+            Label(label, systemImage: icon)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(NetheraWidgetColor.muted)
+                .lineLimit(1)
+
+            Text(value)
+                .font(.system(size: 11, weight: .bold, design: .rounded))
+                .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(2)
+                .minimumScaleFactor(0.48)
+        }
     }
 }
 
@@ -662,35 +604,66 @@ struct NetheraActionCard: View {
     }
 }
 
-struct NetheraStackMetric: View {
-    let value: String
-    let label: String
-    let icon: String
+struct NetheraProtectionSummary: View {
+    let protectedDevices: Int
+    let blockedThreats: Int
 
     var body: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(spacing: 5) {
-                Image(systemName: icon)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(NetheraWidgetColor.cyan)
-                Text(label)
-                    .font(.system(size: 10, weight: .bold))
-                    .foregroundStyle(NetheraWidgetColor.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.62)
-            }
+        VStack(alignment: .leading, spacing: 0) {
+            Label("Netzwerkschutz", systemImage: "shield.checkered")
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NetheraWidgetColor.cyan)
+                .lineLimit(1)
+
+            Spacer(minLength: 8)
+
+            protectionRow(icon: "desktopcomputer", value: "\(protectedDevices)", label: "Geräte geschützt")
+
+            Spacer(minLength: 6)
+
+            Divider()
+                .overlay(NetheraWidgetColor.line)
+
+            Spacer(minLength: 6)
+
+            protectionRow(icon: "nosign", value: "\(blockedThreats)", label: "Heute geblockt")
+
+            Spacer(minLength: 3)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        .padding(9)
+        .background(
+            LinearGradient(
+                colors: [Color.white.opacity(0.11), NetheraWidgetColor.card],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        )
+        .overlay {
+            RoundedRectangle(cornerRadius: 8, style: .continuous)
+                .stroke(NetheraWidgetColor.line, lineWidth: 1)
+        }
+        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
+    }
+
+    private func protectionRow(icon: String, value: String, label: String) -> some View {
+        HStack(spacing: 7) {
+            Image(systemName: icon)
+                .font(.system(size: 10, weight: .bold))
+                .foregroundStyle(NetheraWidgetColor.cyan)
+                .frame(width: 16)
 
             Text(value)
                 .font(.system(size: 14, weight: .bold, design: .rounded))
                 .foregroundStyle(NetheraWidgetColor.text)
+                .lineLimit(1)
+
+            Text(label)
+                .font(.system(size: 8, weight: .bold))
+                .foregroundStyle(NetheraWidgetColor.muted)
                 .lineLimit(2)
-                .minimumScaleFactor(0.50)
+                .minimumScaleFactor(0.62)
         }
-        .frame(maxWidth: .infinity, minHeight: 40, alignment: .leading)
-        .padding(.horizontal, 8)
-        .padding(.vertical, 6)
-        .background(NetheraWidgetColor.card)
-        .clipShape(RoundedRectangle(cornerRadius: 8, style: .continuous))
     }
 }
 

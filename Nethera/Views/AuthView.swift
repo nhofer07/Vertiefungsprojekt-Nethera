@@ -38,24 +38,7 @@ struct AuthView: View {
 
             ScrollView {
                 VStack(alignment: .leading, spacing: 18) {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Image("Nethera_Logo")
-                            .resizable()
-                            .scaledToFit()
-                            .frame(width: 78, height: 78)
-                            .clipShape(RoundedRectangle(cornerRadius: 18, style: .continuous))
-                            .shadow(color: accentColor.opacity(0.22), radius: 18, x: 0, y: 8)
-
-                        Text("Nethera")
-                            .font(.system(size: 40, weight: .bold, design: .rounded))
-                            .foregroundColor(.white)
-
-                        Text("Melde dich an, damit Netzwerk-, Router- und Gerätedaten geladen werden können.")
-                            .font(.subheadline.weight(.medium))
-                            .foregroundColor(.white.opacity(0.68))
-                            .fixedSize(horizontal: false, vertical: true)
-                    }
-                    .padding(.top, 22)
+                    authHero
 
                     AuthModeSelector(mode: $mode, accentColor: accentColor)
 
@@ -94,6 +77,34 @@ struct AuthView: View {
         .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
             loadStoredSettings()
         }
+    }
+
+    private var authHero: some View {
+        VStack(spacing: 11) {
+            Image("Nethera_Logo")
+                .resizable()
+                .scaledToFit()
+                .padding(14)
+                .frame(width: 96, height: 96)
+                .background(Color(red: 0.07, green: 0.16, blue: 0.19))
+                .clipShape(RoundedRectangle(cornerRadius: 24, style: .continuous))
+                .overlay(
+                    RoundedRectangle(cornerRadius: 24, style: .continuous)
+                        .stroke(accentColor.opacity(0.55), lineWidth: 1)
+                )
+                .shadow(color: accentColor.opacity(0.28), radius: 22, x: 0, y: 10)
+
+            Text("Nethera")
+                .font(.system(size: 38, weight: .bold, design: .rounded))
+                .foregroundColor(.white)
+
+            Text("Dein Netzwerk. Sicher verbunden.")
+                .font(.subheadline.weight(.semibold))
+                .foregroundColor(.white.opacity(0.68))
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.top, 28)
+        .padding(.bottom, 6)
     }
 
     private var loginForm: some View {

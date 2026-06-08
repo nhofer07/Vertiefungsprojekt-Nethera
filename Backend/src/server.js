@@ -78,7 +78,7 @@ async function loadRouterSettings(db) {
   }
 
   const meta = await db.collection("meta").findOne({ key: "routerSettings" }, { projection: { _id: 0 } });
-  return meta?.value ?? {
+  const defaults = meta?.value ?? {
     model: "Nethera-7x9",
     version: "Nv.1.0.1.2",
     firmwareUpdate: "keins verfügbar",
@@ -88,6 +88,8 @@ async function loadRouterSettings(db) {
     ipAddress: "192.168.0.224",
     netmask: "255.255.255.0"
   };
+  await saveRouterSettings(db, defaults);
+  return defaults;
 }
 
 async function loadSingletonWithDefault(db, collectionName, defaultValue, valueKey = "value") {
@@ -134,22 +136,30 @@ async function loadAdBlockStats(db) {
 
 async function loadGlobalBlocklist(db) {
   const blocklist = await db.collection("globalBlocklist").findOne({ key: "main" }, { projection: { _id: 0 } });
-  return blocklist?.profile ?? {
+  if (blocklist?.profile) return blocklist.profile;
+
+  const defaults = {
     gamblingEnabled: false,
     adultEnabled: false,
     socialEnabled: false,
     manualDomains: []
   };
+  await saveGlobalBlocklist(db, defaults);
+  return defaults;
 }
 
 async function loadAdBlockDomains(db) {
   const adBlock = await db.collection("adBlockDomains").findOne({ key: "main" }, { projection: { _id: 0 } });
-  return adBlock?.domains ?? [
+  if (adBlock?.domains) return adBlock.domains;
+
+  const defaults = [
     { id: randomUUID(), name: "googleads.g.doubleclick.net", time: "2m" },
     { id: randomUUID(), name: "connect.facebook.com", time: "4m" },
     { id: randomUUID(), name: "stats.g.doubleclick.net", time: "17m" },
     { id: randomUUID(), name: "adservice.google.com", time: "29m" }
   ];
+  await saveAdBlockDomains(db, defaults);
+  return defaults;
 }
 
 async function saveRouterSettings(db, routerSettings) {

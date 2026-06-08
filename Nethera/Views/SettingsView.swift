@@ -146,7 +146,7 @@ struct SettingsView: View {
                             ToggleRow(icon: "shield", label: "Firewall", isOn: $firewall)
                             SettingRow(icon: "network", label: "DNS", value: dnsConfiguration, isEditable: false)
                             SettingRow(icon: "server.rack", label: "Proxy", value: proxy, isEditable: false)
-                            SettingRow(icon: "ipaddress", label: "IP-Adresse", value: ipAddress, isEditable: false)
+                            SettingRow(icon: "number.circle", label: "IP-Adresse", value: ipAddress, isEditable: false)
                             SettingRow(icon: "rectangle.3.offgrid", label: "Netzmaske", value: netmask, isEditable: false)
                         }
 

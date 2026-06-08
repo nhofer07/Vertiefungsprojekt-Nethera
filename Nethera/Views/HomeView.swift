@@ -125,10 +125,15 @@ struct HomeView: View {
                 Image("Nethera_Logo")
                     .resizable()
                     .scaledToFit()
-                    .padding(6)
-                    .frame(width: 40, height: 40)
-                    .background(Color(red: 0.35, green: 0.75, blue: 0.9))
-                    .clipShape(Circle())
+                    .padding(8)
+                    .frame(width: 52, height: 52)
+                    .background(Color(red: 0.09, green: 0.18, blue: 0.20))
+                    .clipShape(RoundedRectangle(cornerRadius: 13, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 13, style: .continuous)
+                            .stroke(Color(red: 0.35, green: 0.75, blue: 0.9).opacity(0.48), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.24), radius: 8, x: 0, y: 5)
             }
 
             VStack(spacing: 10) {
