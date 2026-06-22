@@ -34,7 +34,6 @@ struct SpeedView: View {
 
                         Button {
                             buttonPressed.toggle()
-                            print("Speedtest gestartet")
                         } label: {
                             Text("Geschwindigkeit testen")
                                 .font(.headline.weight(.semibold))

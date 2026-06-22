@@ -27,4 +27,5 @@ async function ensureIndexes(database) {
   await database.collection("groupBlocklists").createIndex({ group: 1 }, { unique: true });
   await database.collection("groups").createIndex({ name: 1 }, { unique: true });
   await database.collection("routerSettings").createIndex({ key: 1 }, { unique: true });
+  await database.collection("accountSettings").createIndex({ key: 1 }, { unique: true });
 }

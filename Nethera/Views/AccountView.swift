@@ -12,8 +12,6 @@ struct AccountView: View {
 
     @StateObject private var authentication = AuthenticationManager()
     
-    // unsere Muster-Variablen + neuen gespeicherten:
-    
     // MARK: Editable State
     @State private var name = ""
     @State private var email = ""
@@ -26,7 +24,6 @@ struct AccountView: View {
     @State private var savedName = ""
     @State private var savedEmail = ""
     @State private var savedPhone = ""
-    @State private var savedPassword = ""
     @State private var savedBirthDate = ""
     @State private var savedIsLoggedIn = false
     @State private var savedAuthMode = ""
@@ -34,21 +31,15 @@ struct AccountView: View {
     @State private var authMessage = ""
     @State private var showDeleteConfirmation = false
 
-    
-    
-    // unsaved check:
-    
     private var hasUnsavedChanges: Bool {
         name != savedName ||
         email != savedEmail ||
         phone != savedPhone ||
-        password != savedPassword ||
+        !password.isEmpty ||
         birthDate != savedBirthDate ||
         isLoggedIn != savedIsLoggedIn ||
         authMode != savedAuthMode
     }
-    
-    
     
     var body: some View {
         NavigationStack {
@@ -66,7 +57,6 @@ struct AccountView: View {
                             Button {
                                 saveAccountSettings()
                             } label: {
-                                // check ob man speichern muss:
                                 Image(systemName: hasUnsavedChanges ? "checkmark.circle.fill" : "checkmark.circle")
                                     .font(.title2.weight(.bold))
                                     .foregroundColor(hasUnsavedChanges ? Color(red: 0.35, green: 0.75, blue: 0.9) : .white.opacity(0.45))
@@ -83,8 +73,6 @@ struct AccountView: View {
                                 .font(.caption.weight(.semibold))
                                 .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                         }
-                        
-                        // alle Felder, die man so sieht:
                         
                         VStack(spacing: 20) {
                             SectionCard(title: "Sitzung", icon: "person.badge.key") {
@@ -143,8 +131,7 @@ struct AccountView: View {
                                 EditableTextRow(icon: "envelope", label: "E-Mail", text: $email)
                                 EditableTextRow(icon: "phone", label: "Telefon", text: $phone)
                                 AccountPasswordRow(authentication: authentication, password: $password)
-
-                                SettingRow(icon: "calendar", label: "Geburtsdatum", value: birthDate, isEditable: false)
+                                EditableTextRow(icon: "calendar", label: "Geburtsdatum", text: $birthDate)
                             }
                             
                             // MARK: Kontoverwaltung
@@ -190,15 +177,14 @@ struct AccountView: View {
         }
     }
 
-    
-    // saven:
-    
+    // Speichert Profilfelder und sendet ein neues Passwort getrennt an den Hash-Endpunkt.
     private func saveAccountSettings() {
+        let newPassword = password
         let settings = NetheraBackend.AccountSettings(
             name: name,
             email: email,
             phone: phone,
-            password: password,
+            password: "",
             birthDate: birthDate,
             twoFactorStatus: "",
             apiAccessStatus: "",
@@ -208,10 +194,21 @@ struct AccountView: View {
 
         NetheraBackend.saveAccountSettings(settings)
 
+        if !newPassword.isEmpty {
+            NetheraBackend.updateAccountPassword(newPassword) { result in
+                switch result {
+                case .success:
+                    authMessage = "Neues Passwort wurde gehasht gespeichert"
+                    password = ""
+                case .failure(let error):
+                    authMessage = error.localizedDescription
+                }
+            }
+        }
+
         savedName = name
         savedEmail = email
         savedPhone = phone
-        savedPassword = password
         savedBirthDate = birthDate
         savedIsLoggedIn = isLoggedIn
         savedAuthMode = authMode
@@ -224,10 +221,8 @@ struct AccountView: View {
     }
 
     private func logout() {
-        isLoggedIn = false
-        authMode = "Abgemeldet"
-        authMessage = "Abgemeldet und in der Datenbank gespeichert"
-        saveAccountSettings()
+        NetheraBackend.logoutAccount()
+        authMessage = "Lokal abgemeldet"
     }
 
     private func deleteAccount() {
@@ -244,20 +239,19 @@ struct AccountView: View {
         savedName = ""
         savedEmail = ""
         savedPhone = ""
-        savedPassword = ""
         savedBirthDate = ""
         savedIsLoggedIn = false
         savedAuthMode = ""
     }
 
-    // neuen anzeigen beim nächsten mal:
+    // Übernimmt den letzten Backend-Stand als Vergleichsbasis für den Speichern-Button.
     private func loadAccountSettings() {
         let settings = NetheraBackend.loadAccountSettings()
 
         name = settings.name
         email = settings.email
         phone = settings.phone
-        password = settings.password
+        password = ""
         birthDate = settings.birthDate
         isLoggedIn = settings.isLoggedIn
         authMode = settings.authMode
@@ -265,7 +259,6 @@ struct AccountView: View {
         savedName = name
         savedEmail = email
         savedPhone = phone
-        savedPassword = password
         savedBirthDate = birthDate
         savedIsLoggedIn = isLoggedIn
         savedAuthMode = authMode
@@ -282,7 +275,7 @@ private struct AccountPasswordRow: View {
 
     var body: some View {
         if authentication.isUnlocked {
-            EditableTextRow(icon: "lock.open", label: "Passwort", text: $password)
+            EditableTextRow(icon: "lock.open", label: "Neues Passwort", text: $password)
         } else {
             Button {
                 authentication.unlock()
@@ -293,13 +286,13 @@ private struct AccountPasswordRow: View {
                         .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
                         .frame(width: 30)
 
-                    Text("Passwort")
+                    Text("Passwort ändern")
                         .foregroundColor(.white)
                         .font(.system(size: 16, weight: .semibold))
 
                     Spacer()
 
-                    Text("Anzeigen")
+                    Text("Entsperren")
                         .foregroundColor(.white.opacity(0.62))
                         .font(.system(size: 15, weight: .semibold))
 

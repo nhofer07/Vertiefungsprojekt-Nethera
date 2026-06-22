@@ -1,13 +1,15 @@
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
-import { randomUUID } from "node:crypto";
+import { randomBytes, randomUUID, scrypt, timingSafeEqual } from "node:crypto";
+import { promisify } from "node:util";
 import { getDb } from "./db.js";
 
 dotenv.config();
 
 const app = express();
 const port = Number(process.env.PORT ?? 3001);
+const scryptAsync = promisify(scrypt);
 
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -105,17 +107,13 @@ async function loadSingletonWithDefault(db, collectionName, defaultValue, valueK
 }
 
 async function loadAccountSettings(db) {
-  return loadSingletonWithDefault(db, "accountSettings", {
-    name: "",
-    email: "",
-    phone: "",
-    password: "",
-    birthDate: "",
-    twoFactorStatus: "",
-    apiAccessStatus: "",
-    isLoggedIn: false,
-    authMode: ""
-  }, "settings");
+  const doc = await db.collection("accountSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
+  if (!doc?.settings) {
+    return emptyAccountSettings();
+  }
+
+  const settings = await migrateLegacyAccountPassword(db, doc.settings);
+  return publicAccountSettings(settings);
 }
 
 async function loadSpeedMetrics(db) {
@@ -171,15 +169,86 @@ async function saveRouterSettings(db, routerSettings) {
 }
 
 async function saveAccountSettings(db, settings) {
+  const existing = await db.collection("accountSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
+  const current = existing?.settings ?? {};
+  const profile = publicAccountSettings(settings);
+
   await db.collection("accountSettings").updateOne(
     { key: "main" },
-    { $set: { key: "main", settings } },
+    {
+      $set: {
+        key: "main",
+        settings: {
+          ...current,
+          ...profile,
+          passwordHash: current.passwordHash
+        }
+      }
+    },
     { upsert: true }
   );
 }
 
 async function deleteAccountSettings(db) {
   await db.collection("accountSettings").deleteMany({ key: "main" });
+}
+
+function emptyAccountSettings() {
+  return {
+    name: "",
+    email: "",
+    phone: "",
+    birthDate: "",
+    twoFactorStatus: "",
+    apiAccessStatus: "",
+    isLoggedIn: false,
+    authMode: ""
+  };
+}
+
+function publicAccountSettings(settings = {}) {
+  const { password, passwordHash, ...profile } = settings;
+  return {
+    ...emptyAccountSettings(),
+    ...profile,
+    isLoggedIn: false,
+    authMode: ""
+  };
+}
+
+function normalizeEmail(value) {
+  return typeof value === "string" ? value.trim().toLowerCase() : "";
+}
+
+async function hashPassword(password) {
+  const salt = randomBytes(16).toString("hex");
+  const derivedKey = await scryptAsync(password, salt, 64);
+  return `${salt}:${derivedKey.toString("hex")}`;
+}
+
+async function verifyPassword(password, storedHash) {
+  if (typeof storedHash !== "string" || !storedHash.includes(":")) return false;
+  const [salt, storedKeyHex] = storedHash.split(":");
+  const storedKey = Buffer.from(storedKeyHex, "hex");
+  const derivedKey = await scryptAsync(password, salt, storedKey.length);
+  return storedKey.length === derivedKey.length && timingSafeEqual(storedKey, derivedKey);
+}
+
+async function migrateLegacyAccountPassword(db, settings) {
+  if (!settings.password || settings.passwordHash) return settings;
+
+  const migrated = {
+    ...settings,
+    passwordHash: await hashPassword(settings.password)
+  };
+  delete migrated.password;
+
+  await db.collection("accountSettings").updateOne(
+    { key: "main" },
+    { $set: { key: "main", settings: migrated } },
+    { upsert: true }
+  );
+  return migrated;
 }
 
 async function saveSpeedMetrics(db, value) {
@@ -325,6 +394,75 @@ app.put("/api/router-settings", asyncRoute(async (request, response) => {
   const routerSettings = request.body?.routerSettings ?? {};
   const db = await getDb();
   await saveRouterSettings(db, routerSettings);
+  response.json({ ok: true });
+}));
+
+app.post("/api/auth/register", asyncRoute(async (request, response) => {
+  const name = request.body?.name?.trim() ?? "";
+  const email = normalizeEmail(request.body?.email);
+  const password = request.body?.password ?? "";
+  if (!name || !email || password.length < 8) {
+    return response.status(400).json({ ok: false, error: "Name, E-Mail und mindestens acht Passwortzeichen sind erforderlich." });
+  }
+
+  const db = await getDb();
+  const existing = await db.collection("accountSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
+  if (existing?.settings?.email) {
+    return response.status(409).json({ ok: false, error: "Es ist bereits ein Account registriert." });
+  }
+
+  const settings = {
+    ...emptyAccountSettings(),
+    name,
+    email,
+    passwordHash: await hashPassword(password)
+  };
+  await db.collection("accountSettings").updateOne(
+    { key: "main" },
+    { $set: { key: "main", settings } },
+    { upsert: true }
+  );
+  response.status(201).json({ ok: true, accountSettings: publicAccountSettings(settings) });
+}));
+
+app.post("/api/auth/login", asyncRoute(async (request, response) => {
+  const email = normalizeEmail(request.body?.email);
+  const password = request.body?.password ?? "";
+  const db = await getDb();
+  const account = await db.collection("accountSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
+  const settings = account?.settings ? await migrateLegacyAccountPassword(db, account.settings) : null;
+
+  const isValid = settings &&
+    normalizeEmail(settings.email) === email &&
+    await verifyPassword(password, settings.passwordHash);
+
+  if (!isValid) {
+    return response.status(401).json({ ok: false, error: "E-Mail oder Passwort stimmt nicht." });
+  }
+  response.json({ ok: true, accountSettings: publicAccountSettings(settings) });
+}));
+
+app.put("/api/auth/password", asyncRoute(async (request, response) => {
+  const newPassword = request.body?.newPassword ?? "";
+  if (newPassword.length < 8) {
+    return response.status(400).json({ ok: false, error: "Das neue Passwort muss mindestens acht Zeichen haben." });
+  }
+
+  const db = await getDb();
+  const account = await db.collection("accountSettings").findOne({ key: "main" }, { projection: { _id: 0 } });
+  if (!account?.settings) {
+    return response.status(404).json({ ok: false, error: "Account nicht gefunden." });
+  }
+
+  const settings = {
+    ...account.settings,
+    passwordHash: await hashPassword(newPassword)
+  };
+  delete settings.password;
+  await db.collection("accountSettings").updateOne(
+    { key: "main" },
+    { $set: { key: "main", settings } }
+  );
   response.json({ ok: true });
 }));
 

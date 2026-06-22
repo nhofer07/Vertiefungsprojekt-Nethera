@@ -2,7 +2,7 @@
 
 Nethera ist ein iOS-Prototyp für eine Router-/Kindersicherungs-App. Die App zeigt Geräte in Gruppen an, erlaubt Blocklisten für Gruppen und einzelne Geräte und kann Geräteeinstellungen als Presets speichern.
 
-Der Fokus liegt auf einer verständlichen Demo-App mit SwiftUI. Es gibt aktuell (noch) keinen echten Router, keine echte Netzwerkverbindung und kein Backend. Die Daten werden lokal am Gerät gespeichert.
+Der Fokus liegt auf einer verständlichen Demo-App mit SwiftUI. Es gibt aktuell keinen echten Router, die App-Daten werden aber über ein Node-/Express-Backend in MongoDB gespeichert.
 
 ---
 
@@ -16,7 +16,8 @@ Wichtige Dateien:
 - `NetheraApp.swift` – Startpunkt der App
 - `ContentView.swift` – Hauptnavigation / Tabs
 - `Devices.swift` – Datenmodell für ein Gerät
-- `NetheraStorage.swift` – Speichern und Laden von Einstellungen
+- `NetheraStorage.swift` – gemeinsame Datenmodelle
+- `NetheraBackend.swift` – Laden, lokaler Cache und Schreiben zum Backend
 
 ---
 
@@ -108,27 +109,17 @@ Wenn ein Preset aktiv ist und man nochmal darauf klickt, soll es wieder deaktivi
 
 ---
 
-### 4. Lokales Speichern mit UserDefaults
-Die App verwendet `UserDefaults`, um Daten lokal zu speichern.
-
-Gespeichert werden zum Beispiel:
-
-- Geräte
-- Gruppen
-- Geräteeinstellungen
-- Presets
-- Gruppen-Blocklisten
-
-Da `UserDefaults` eigentlich einfache Daten speichert, werden komplexe Swift-Structs mit `Codable`, `JSONEncoder` und `JSONDecoder` umgewandelt.
+### 4. Backend und lokaler Cache
+MongoDB ist die dauerhafte Datenquelle. Die App lädt den gesamten Zustand über `/api/state` und hält den letzten erfolgreichen Stand zusätzlich in `UserDefaults`, damit Views und Widgets schnell darauf zugreifen können.
 
 Vereinfacht:
 
 ```text
-Swift-Objekt → JSON → UserDefaults
-UserDefaults → JSON → Swift-Objekt
+MongoDB → Express API → URLSession → UserDefaults-Cache → SwiftUI / Widgets
+SwiftUI-Änderung → Express API → MongoDB
 ```
 
-Das passiert hauptsächlich in `NetheraStorage.swift`.
+Das passiert hauptsächlich in `NetheraBackend.swift`.
 
 ---
 
@@ -223,8 +214,7 @@ Nethera/
 │   ├── BlocklistEditorSheet.swift
 │   ├── InfoCard.swift
 │   ├── PageHeaderView.swift
-│   ├── SpeedCard.swift
-│   └── StatCard.swift
+│   └── SpeedCard.swift
 │
 ├── Views/
 │   ├── DevicesView.swift
@@ -232,11 +222,11 @@ Nethera/
 │   ├── HomeView.swift
 │   ├── SettingsView.swift
 │   ├── AccountView.swift
-│   ├── BlocklistView.swift
 │   └── ...
 │
 ├── Devices.swift
 ├── NetheraStorage.swift
+├── NetheraBackend.swift
 ├── ContentView.swift
 └── NetheraApp.swift
 ```

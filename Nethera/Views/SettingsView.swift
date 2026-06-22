@@ -211,7 +211,7 @@ struct SettingsView: View {
         }
     }
 
-    // save funktion:
+    // Bündelt alle editierbaren Router-Felder in einem Backend-Update.
     func saveSettings() {
         let wasFirewallEnabled = savedFirewall
         let currentSettings = NetheraBackend.loadRouterSettings()
@@ -252,15 +252,6 @@ struct SettingsView: View {
         savedIpAddress = ipAddress
         savedNetmask = netmask
         showSavedMessage = true
-
-        // debug:
-        print("Einstellungen gespeichert:")
-        print("WLAN-Name: \(wifiName)")
-        print("Passwort: \(password)")
-        print("Gastnetz: \(guestPassword)")
-        print("Meldungen: \(notifications)")
-        print("Frequenz: \(frequency)")
-        print("Firewall: \(firewall)")
 
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.6) {
             showSavedMessage = false
@@ -486,35 +477,6 @@ struct EditableTextRow: View {
     }
 }
 
-struct EditableSecureRow: View {
-    let icon: String
-    let label: String
-    @Binding var text: String
-
-    var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
-                .frame(width: 30)
-
-            Text(label)
-                .foregroundColor(.white)
-                .font(.system(size: 16, weight: .semibold))
-
-            Spacer()
-
-            SecureField("", text: $text)
-                .multilineTextAlignment(.trailing)
-                .foregroundColor(.white)
-                .font(.system(size: 16, weight: .medium))
-        }
-        .padding(12)
-        .background(Color.white.opacity(0.12))
-        .cornerRadius(16)
-    }
-}
-
 struct ToggleRow: View {
     let icon: String
     let label: String
@@ -534,39 +496,6 @@ struct ToggleRow: View {
             }
         }
         .toggleStyle(SwitchToggleStyle(tint: Color(red: 0.35, green: 0.75, blue: 0.9)))
-        .padding(12)
-        .background(Color.white.opacity(0.12))
-        .cornerRadius(16)
-    }
-}
-
-struct PickerRow: View {
-    let icon: String
-    let label: String
-    @Binding var selection: String
-    let options: [String]
-
-    var body: some View {
-        HStack {
-            Image(systemName: icon)
-                .font(.subheadline.weight(.semibold))
-                .foregroundColor(Color(red: 0.35, green: 0.75, blue: 0.9))
-                .frame(width: 30)
-
-            Text(label)
-                .foregroundColor(.white)
-                .font(.system(size: 16, weight: .semibold))
-
-            Spacer()
-
-            Picker("", selection: $selection) {
-                ForEach(options, id: \.self) {
-                    Text($0)
-                }
-            }
-            .pickerStyle(.menu)
-            .tint(.white)
-        }
         .padding(12)
         .background(Color.white.opacity(0.12))
         .cornerRadius(16)

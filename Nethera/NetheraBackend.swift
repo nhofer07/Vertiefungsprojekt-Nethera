@@ -155,6 +155,20 @@ enum NetheraBackend {
         var blockedPercent: String = ""
     }
 
+    private struct AuthResponse: Decodable {
+        var ok: Bool
+        var accountSettings: AccountSettings?
+        var error: String?
+    }
+
+    private struct BackendRequestError: LocalizedError {
+        let message: String
+
+        var errorDescription: String? {
+            message
+        }
+    }
+
     // dieses objekt kommt gesammelt von /api/state aus dem backend:
     struct BackendState: Codable {
         var devices: [Device]
@@ -204,7 +218,7 @@ enum NetheraBackend {
                 return
             }
 
-            // wenn der request klappt, cachen wir die daten lokal für die views/widgets:
+            // Views und Widgets lesen aus diesem Cache; die Datenquelle bleibt MongoDB.
             UserDefaults.standard.set(candidate, forKey: baseURLKey)
             UserDefaults.standard.set(true, forKey: backendAvailableKey)
             save(state.devices, forKey: devicesKey)
@@ -222,7 +236,13 @@ enum NetheraBackend {
                 save(routerSettings, forKey: routerSettingsKey)
             }
             if let accountSettings = state.accountSettings {
-                save(accountSettings, forKey: accountSettingsKey)
+                let currentSession = load(accountSettingsKey, as: AccountSettings.self) ?? AccountSettings()
+                var syncedAccount = accountSettings
+                let sameAccount = syncedAccount.email.caseInsensitiveCompare(currentSession.email) == .orderedSame
+                syncedAccount.password = ""
+                syncedAccount.isLoggedIn = sameAccount && currentSession.isLoggedIn
+                syncedAccount.authMode = syncedAccount.isLoggedIn ? currentSession.authMode : ""
+                save(syncedAccount, forKey: accountSettingsKey)
             }
             if let speedMetrics = state.speedMetrics {
                 save(speedMetrics, forKey: speedMetricsKey)
@@ -313,15 +333,70 @@ enum NetheraBackend {
     // lädt konto-einstellungen:
     static func loadAccountSettings() -> AccountSettings {
         migrateLegacyStorageIfNeeded()
-        return load(accountSettingsKey, as: AccountSettings.self) ?? AccountSettings()
+        var settings = load(accountSettingsKey, as: AccountSettings.self) ?? AccountSettings()
+        if !settings.password.isEmpty {
+            settings.password = ""
+            save(settings, forKey: accountSettingsKey)
+        }
+        return settings
     }
 
     // speichert konto-einstellungen:
     static func saveAccountSettings(_ settings: AccountSettings) {
         migrateLegacyStorageIfNeeded()
         guard isDatabaseAvailable() else { return }
+        var sanitized = settings
+        sanitized.password = ""
+        save(sanitized, forKey: accountSettingsKey)
+        push(["accountSettings": sanitized], to: "/api/account-settings", method: "PUT")
+        NetheraWidgetDataStore.syncSnapshot()
+        NotificationCenter.default.post(name: .accountSettingsDidChange, object: nil)
+    }
+
+    static func login(email: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        authRequest(["email": email, "password": password], to: "/api/auth/login", method: "POST") { result in
+            switch result {
+            case .success(let response):
+                guard let account = response.accountSettings else {
+                    completion(.failure(BackendRequestError(message: "Accountdaten fehlen in der Backend-Antwort.")))
+                    return
+                }
+                saveAuthenticatedAccount(account, authMode: "Angemeldet")
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    static func register(name: String, email: String, password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        authRequest(["name": name, "email": email, "password": password], to: "/api/auth/register", method: "POST") { result in
+            switch result {
+            case .success(let response):
+                guard let account = response.accountSettings else {
+                    completion(.failure(BackendRequestError(message: "Accountdaten fehlen in der Backend-Antwort.")))
+                    return
+                }
+                saveAuthenticatedAccount(account, authMode: "Account erstellt")
+                completion(.success(()))
+            case .failure(let error):
+                completion(.failure(error))
+            }
+        }
+    }
+
+    static func updateAccountPassword(_ password: String, completion: @escaping (Result<Void, Error>) -> Void) {
+        authRequest(["newPassword": password], to: "/api/auth/password", method: "PUT") { result in
+            completion(result.map { _ in () })
+        }
+    }
+
+    static func logoutAccount() {
+        var settings = loadAccountSettings()
+        settings.password = ""
+        settings.isLoggedIn = false
+        settings.authMode = "Abgemeldet"
         save(settings, forKey: accountSettingsKey)
-        push(["accountSettings": settings], to: "/api/account-settings", method: "PUT")
         NetheraWidgetDataStore.syncSnapshot()
         NotificationCenter.default.post(name: .accountSettingsDidChange, object: nil)
     }
@@ -547,7 +622,7 @@ enum NetheraBackend {
         return "http://\(trimmed)"
     }
 
-    // übernimmt alte lokale daten einmalig in die neue backend-schicht:
+    // Übernimmt alte lokale Daten einmalig, damit bestehende Installationen nichts verlieren.
     private static func migrateLegacyStorageIfNeeded() {
         let defaults = UserDefaults.standard
         guard !defaults.bool(forKey: didMigrateLegacyKey) else { return }
@@ -596,7 +671,7 @@ enum NetheraBackend {
             name: defaults.string(forKey: "account.name") ?? "",
             email: defaults.string(forKey: "account.email") ?? "",
             phone: defaults.string(forKey: "account.phone") ?? "",
-            password: defaults.string(forKey: "account.password") ?? "",
+            password: "",
             birthDate: "",
             twoFactorStatus: "",
             apiAccessStatus: "",
@@ -637,7 +712,97 @@ enum NetheraBackend {
         UserDefaults.standard.set(data, forKey: key)
     }
 
-    // schreibt änderungen per http zurück ins backend:
+    private static func saveAuthenticatedAccount(_ account: AccountSettings, authMode: String) {
+        var authenticated = account
+        authenticated.password = ""
+        authenticated.isLoggedIn = true
+        authenticated.authMode = authMode
+        save(authenticated, forKey: accountSettingsKey)
+        NetheraWidgetDataStore.syncSnapshot()
+        NotificationCenter.default.post(name: .accountSettingsDidChange, object: nil)
+    }
+
+    private static func authRequest<T: Encodable>(
+        _ body: T,
+        to path: String,
+        method: String,
+        completion: @escaping (Result<AuthResponse, Error>) -> Void
+    ) {
+        guard let data = try? JSONEncoder().encode(body) else {
+            completion(.failure(BackendRequestError(message: "Request konnte nicht erstellt werden.")))
+            return
+        }
+
+        authRequest(
+            data,
+            to: path,
+            method: method,
+            using: backendBaseURLCandidates(),
+            completion: completion
+        )
+    }
+
+    // Auth probiert wie /api/state alle bekannten Backend-Adressen durch.
+    private static func authRequest(
+        _ body: Data,
+        to path: String,
+        method: String,
+        using candidates: [String],
+        completion: @escaping (Result<AuthResponse, Error>) -> Void
+    ) {
+        guard let candidate = candidates.first,
+              let url = URL(string: "\(candidate)\(path)") else {
+            markDatabaseUnavailable()
+            DispatchQueue.main.async {
+                completion(.failure(BackendRequestError(message: "Backend nicht erreichbar.")))
+            }
+            return
+        }
+
+        var request = URLRequest(url: url)
+        request.httpMethod = method
+        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.httpBody = body
+
+        URLSession.shared.dataTask(with: request) { data, response, error in
+            if let error {
+                print("NetheraBackend auth failed for \(candidate): \(error.localizedDescription)")
+                authRequest(body, to: path, method: method, using: Array(candidates.dropFirst()), completion: completion)
+                return
+            }
+
+            let statusCode = (response as? HTTPURLResponse)?.statusCode
+
+            // Ein 404 kommt meistens von einer veralteten oder falschen Backend-Adresse.
+            if statusCode == 404, candidates.count > 1 {
+                authRequest(body, to: path, method: method, using: Array(candidates.dropFirst()), completion: completion)
+                return
+            }
+
+            let result: Result<AuthResponse, Error>
+            if let data, let decoded = try? JSONDecoder().decode(AuthResponse.self, from: data) {
+                if decoded.ok {
+                    UserDefaults.standard.set(candidate, forKey: baseURLKey)
+                    UserDefaults.standard.set(true, forKey: backendAvailableKey)
+                    result = .success(decoded)
+                } else {
+                    result = .failure(BackendRequestError(message: decoded.error ?? "Anfrage fehlgeschlagen."))
+                }
+            } else if statusCode == 404 {
+                result = .failure(BackendRequestError(message: "Login-Endpunkt fehlt. Bitte das aktuelle Backend neu starten."))
+            } else if let statusCode {
+                result = .failure(BackendRequestError(message: "Backend-Fehler \(statusCode)."))
+            } else {
+                result = .failure(BackendRequestError(message: "Ungültige Backend-Antwort."))
+            }
+
+            DispatchQueue.main.async {
+                completion(result)
+            }
+        }.resume()
+    }
+
+    // Schreibt Änderungen per HTTP zurück ins Backend.
     private static func push<T: Encodable>(_ body: T, to path: String, method: String) {
         guard let url = URL(string: "\(baseURL)\(path)"),
               let data = try? JSONEncoder().encode(body) else { return }
@@ -646,29 +811,19 @@ enum NetheraBackend {
         request.httpMethod = method
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")
         request.httpBody = data
-        URLSession.shared.dataTask(with: request) { _, response, error in
-            if let error {
-                print("NetheraBackend push failed \(method) \(path): \(error.localizedDescription)")
-                markDatabaseUnavailable()
-                return
-            }
-
-            if let httpResponse = response as? HTTPURLResponse, !(200...299).contains(httpResponse.statusCode) {
-                print("NetheraBackend push failed \(method) \(path): status \(httpResponse.statusCode)")
-                markDatabaseUnavailable()
-                return
-            }
-
-            UserDefaults.standard.set(true, forKey: backendAvailableKey)
-            print("NetheraBackend push ok \(method) \(path)")
-        }.resume()
+        send(request, method: method, path: path)
     }
 
-    // für delete-requests ohne json-body:
+    // Für DELETE-Requests ohne JSON-Body.
     private static func pushEmpty(to path: String, method: String) {
         guard let url = URL(string: "\(baseURL)\(path)") else { return }
         var request = URLRequest(url: url)
         request.httpMethod = method
+        send(request, method: method, path: path)
+    }
+
+    // Gemeinsame Fehlerbehandlung für alle Hintergrund-Schreibvorgänge.
+    private static func send(_ request: URLRequest, method: String, path: String) {
         URLSession.shared.dataTask(with: request) { _, response, error in
             if let error {
                 print("NetheraBackend push failed \(method) \(path): \(error.localizedDescription)")
@@ -683,7 +838,6 @@ enum NetheraBackend {
             }
 
             UserDefaults.standard.set(true, forKey: backendAvailableKey)
-            print("NetheraBackend push ok \(method) \(path)")
         }.resume()
     }
 

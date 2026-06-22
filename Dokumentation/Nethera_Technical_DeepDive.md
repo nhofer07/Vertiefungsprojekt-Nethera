@@ -9,7 +9,9 @@ Wir verwenden:
 ### Aufbau:
 - Views: DeviceDetailView, DevicesView, HomeView
 - Models: Device, Group
-- Storage: NetheraStorage (UserDefaults)
+- Backend: Node.js, Express und MongoDB
+- App-Anbindung: URLSession über NetheraBackend
+- Lokaler Cache: UserDefaults für Views und Widgets
 
 ---
 
@@ -41,17 +43,7 @@ device.activePresetId = preset.id
 
 ## 💾 Daten speichern
 
-### Methode:
-UserDefaults
-
-```swift
-UserDefaults.standard.set(value, forKey: "key")
-```
-
-### Bewertung:
-+ einfach
-- nicht skalierbar
-- kein echtes Backend
+Änderungen werden als JSON über HTTP an das Express-Backend gesendet und dort in MongoDB gespeichert. Nach einem erfolgreichen `/api/state`-Request cached `NetheraBackend` die Daten zusätzlich lokal für SwiftUI und WidgetKit.
 
 ---
 

@@ -7,19 +7,16 @@ struct AuthView: View {
     }
 
     @State private var mode: Mode = .login
-    @State private var storedSettings = NetheraBackend.loadAccountSettings()
-
     @State private var loginEmail = ""
     @State private var loginPassword = ""
 
     @State private var name = ""
     @State private var email = ""
-    @State private var phone = ""
     @State private var password = ""
-    @State private var birthDate = ""
 
     @State private var message = ""
     @State private var messageIsError = false
+    @State private var isSubmitting = false
 
     private let accentColor = Color(red: 0.35, green: 0.75, blue: 0.9)
 
@@ -41,6 +38,7 @@ struct AuthView: View {
                     authHero
 
                     AuthModeSelector(mode: $mode, accentColor: accentColor)
+                        .padding(.top, 10)
 
                     VStack(alignment: .leading, spacing: 14) {
                         if mode == .login {
@@ -67,15 +65,12 @@ struct AuthView: View {
                     }
                 }
                 .padding(.horizontal, 22)
+                .padding(.top, 48)
                 .padding(.bottom, 28)
             }
         }
         .onAppear {
-            loadStoredSettings()
             NetheraBackend.refreshFromMongoDB()
-        }
-        .onReceive(NotificationCenter.default.publisher(for: .netheraBackendDidRefresh)) { _ in
-            loadStoredSettings()
         }
     }
 
@@ -119,7 +114,7 @@ struct AuthView: View {
 
             AuthSecureField(icon: "lock", placeholder: "Passwort", text: $loginPassword)
 
-            AuthPrimaryButton(title: "Einloggen", icon: "rectangle.portrait.and.arrow.right") {
+            AuthPrimaryButton(title: "Einloggen", icon: "rectangle.portrait.and.arrow.right", isLoading: isSubmitting) {
                 login()
             }
         }
@@ -135,98 +130,67 @@ struct AuthView: View {
             AuthTextField(icon: "envelope", placeholder: "E-Mail", text: $email)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.emailAddress)
-            AuthTextField(icon: "phone", placeholder: "Telefon", text: $phone)
-                .keyboardType(.phonePad)
             AuthSecureField(icon: "lock", placeholder: "Passwort", text: $password)
-            AuthTextField(icon: "calendar", placeholder: "Geburtsdatum", text: $birthDate)
-            AuthPrimaryButton(title: "Registrieren", icon: "person.badge.plus") {
+            Text("Telefon und Geburtsdatum kannst du danach in den Kontoeinstellungen ergänzen.")
+                .font(.caption)
+                .foregroundColor(.white.opacity(0.60))
+                .fixedSize(horizontal: false, vertical: true)
+
+            AuthPrimaryButton(title: "Registrieren", icon: "person.badge.plus", isLoading: isSubmitting) {
                 register()
             }
         }
     }
 
-    private func loadStoredSettings() {
-        storedSettings = NetheraBackend.loadAccountSettings()
-    }
-
     private func login() {
         let trimmedEmail = loginEmail.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard NetheraBackend.isDatabaseAvailable() else {
-            showMessage("Datenbank nicht erreichbar. Login erst nach Backend-Verbindung möglich.", isError: true)
-            NetheraBackend.refreshFromMongoDB()
-            return
-        }
 
         guard !trimmedEmail.isEmpty, !loginPassword.isEmpty else {
             showMessage("Bitte E-Mail und Passwort eingeben.", isError: true)
             return
         }
 
-        guard !storedSettings.email.isEmpty, !storedSettings.password.isEmpty else {
-            showMessage("Noch kein Account vorhanden. Bitte zuerst registrieren.", isError: true)
-            mode = .register
-            return
+        isSubmitting = true
+        NetheraBackend.login(email: trimmedEmail, password: loginPassword) { result in
+            isSubmitting = false
+            switch result {
+            case .success:
+                loginPassword = ""
+                showMessage("Angemeldet.", isError: false)
+            case .failure(let error):
+                showMessage(error.localizedDescription, isError: true)
+            }
         }
-
-        guard trimmedEmail.caseInsensitiveCompare(storedSettings.email) == .orderedSame,
-              loginPassword == storedSettings.password else {
-            showMessage("E-Mail oder Passwort stimmt nicht.", isError: true)
-            return
-        }
-
-        var settings = storedSettings
-        settings.isLoggedIn = true
-        settings.authMode = "Angemeldet"
-        NetheraBackend.saveAccountSettings(settings)
-        showMessage("Angemeldet.", isError: false)
     }
 
     private func register() {
         let trimmedName = name.trimmingCharacters(in: .whitespacesAndNewlines)
         let trimmedEmail = email.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedPhone = phone.trimmingCharacters(in: .whitespacesAndNewlines)
-        let trimmedBirthDate = birthDate.trimmingCharacters(in: .whitespacesAndNewlines)
-
-        guard NetheraBackend.isDatabaseAvailable() else {
-            showMessage("Datenbank nicht erreichbar. Registrierung erst nach Backend-Verbindung möglich.", isError: true)
-            NetheraBackend.refreshFromMongoDB()
-            return
-        }
 
         guard !trimmedName.isEmpty,
               !trimmedEmail.isEmpty,
-              !trimmedPhone.isEmpty,
-              !password.isEmpty,
-              !trimmedBirthDate.isEmpty else {
+              !password.isEmpty else {
             showMessage("Bitte alle Registrierungsfelder ausfüllen.", isError: true)
             return
         }
 
-        let settings = NetheraBackend.AccountSettings(
-            name: trimmedName,
-            email: trimmedEmail,
-            phone: trimmedPhone,
-            password: password,
-            birthDate: trimmedBirthDate,
-            twoFactorStatus: "",
-            apiAccessStatus: "",
-            isLoggedIn: true,
-            authMode: "Account erstellt"
-        )
-
-        NetheraBackend.saveAccountSettings(settings)
-        storedSettings = settings
-        clearRegistrationForm()
-        showMessage("Account erstellt und gespeichert.", isError: false)
+        isSubmitting = true
+        NetheraBackend.register(name: trimmedName, email: trimmedEmail, password: password) { result in
+            isSubmitting = false
+            switch result {
+            case .success:
+                clearRegistrationForm()
+                showMessage("Account erstellt und sicher gespeichert.", isError: false)
+            case .failure(let error):
+                showMessage(error.localizedDescription, isError: true)
+            }
+        }
     }
 
     private func clearRegistrationForm() {
         name = ""
         email = ""
-        phone = ""
         password = ""
-        birthDate = ""
     }
 
     private func showMessage(_ text: String, isError: Bool) {
@@ -320,19 +284,28 @@ private struct AuthSecureField: View {
 private struct AuthPrimaryButton: View {
     let title: String
     let icon: String
+    var isLoading = false
     let action: () -> Void
 
     var body: some View {
         Button(action: action) {
-            Label(title, systemImage: icon)
-                .font(.headline.weight(.bold))
-                .foregroundColor(.black)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 14)
-                .background(Color(red: 0.35, green: 0.75, blue: 0.9))
-                .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+            Group {
+                if isLoading {
+                    ProgressView()
+                        .tint(.black)
+                } else {
+                    Label(title, systemImage: icon)
+                }
+            }
+            .font(.headline.weight(.bold))
+            .foregroundColor(.black)
+            .frame(maxWidth: .infinity)
+            .frame(height: 50)
+            .background(Color(red: 0.35, green: 0.75, blue: 0.9))
+            .clipShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
         }
         .buttonStyle(.plain)
+        .disabled(isLoading)
         .padding(.top, 4)
     }
 }

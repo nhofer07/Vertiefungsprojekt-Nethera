@@ -1,7 +1,7 @@
 import Foundation
 
 
-// speicherlogik:
+// Gemeinsame Datenmodelle und Änderungs-Benachrichtigungen.
 
 extension Notification.Name {
     static let groupBlocklistDidChange = Notification.Name("groupBlocklistDidChange")
@@ -182,92 +182,5 @@ struct DevicePreset: Codable, Identifiable, Equatable {
         startTime = try container.decodeIfPresent(Date.self, forKey: .startTime) ?? Date()
         endTime = try container.decodeIfPresent(Date.self, forKey: .endTime) ?? Date()
         blocklist = try container.decodeIfPresent(BlocklistProfile.self, forKey: .blocklist) ?? BlocklistProfile()
-    }
-}
-
-enum NetheraStorage {
-    private static let deviceSettingsKey = "devices.settings"
-    private static let presetsKey = "SavedDevicePresets"
-    private static let groupBlocklistsKey = "devices.groupBlocklists"
-
-    private static func loadDictionary<T: Decodable>(forKey key: String, as type: T.Type) -> T? {
-        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
-        return try? JSONDecoder().decode(T.self, from: data)
-    }
-
-    private static func saveEncodable<T: Encodable>(_ value: T, forKey key: String) {
-        guard let data = try? JSONEncoder().encode(value) else { return }
-        UserDefaults.standard.set(data, forKey: key)
-    }
-
-    static func allDeviceSettings() -> [String: DeviceSettings] {
-        loadDictionary(forKey: deviceSettingsKey, as: [String: DeviceSettings].self) ?? [:]
-    }
-
-    static func deviceSettings(for deviceID: UUID) -> DeviceSettings {
-        allDeviceSettings()[deviceID.uuidString] ?? DeviceSettings()
-    }
-
-    static func saveDeviceSettings(_ settings: DeviceSettings, for deviceID: UUID) {
-        var all = allDeviceSettings()
-        all[deviceID.uuidString] = settings
-        saveEncodable(all, forKey: deviceSettingsKey)
-        NetheraWidgetDataStore.syncSnapshot()
-    }
-
-    static func deleteDeviceSettings(for deviceID: UUID) {
-        var all = allDeviceSettings()
-        all.removeValue(forKey: deviceID.uuidString)
-        saveEncodable(all, forKey: deviceSettingsKey)
-        NetheraWidgetDataStore.syncSnapshot()
-    }
-
-    static func loadPresets() -> [DevicePreset] {
-        loadDictionary(forKey: presetsKey, as: [DevicePreset].self) ?? []
-    }
-
-    static func savePresets(_ presets: [DevicePreset]) {
-        saveEncodable(presets, forKey: presetsKey)
-        NetheraWidgetDataStore.syncSnapshot()
-    }
-
-    static func allGroupBlocklists() -> [String: BlocklistProfile] {
-        loadDictionary(forKey: groupBlocklistsKey, as: [String: BlocklistProfile].self) ?? [:]
-    }
-
-    static func groupBlocklist(for group: String) -> BlocklistProfile {
-        allGroupBlocklists()[group] ?? BlocklistProfile()
-    }
-
-    static func saveGroupBlocklist(_ profile: BlocklistProfile, for group: String) {
-        var all = allGroupBlocklists()
-        if profile.hasActiveRules {
-            all[group] = profile
-        } else {
-            all.removeValue(forKey: group)
-        }
-        saveEncodable(all, forKey: groupBlocklistsKey)
-        NetheraWidgetDataStore.syncSnapshot()
-        NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
-    }
-
-    static func renameGroupBlocklist(from oldGroup: String, to newGroup: String) {
-        guard oldGroup != newGroup else { return }
-        var all = allGroupBlocklists()
-        let value = all.removeValue(forKey: oldGroup)
-        if let value {
-            all[newGroup] = value
-        }
-        saveEncodable(all, forKey: groupBlocklistsKey)
-        NetheraWidgetDataStore.syncSnapshot()
-        NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
-    }
-
-    static func deleteGroupBlocklist(for group: String) {
-        var all = allGroupBlocklists()
-        all.removeValue(forKey: group)
-        saveEncodable(all, forKey: groupBlocklistsKey)
-        NetheraWidgetDataStore.syncSnapshot()
-        NotificationCenter.default.post(name: .groupBlocklistDidChange, object: nil)
     }
 }
